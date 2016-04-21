@@ -1,0 +1,7 @@
+[package]
+name = "losetup"
+version = "0.1.0"
+authors = ["Michael Daffin <michael@daffin.io>"]
+
+[dependencies]
+ioctl = "0.3"
