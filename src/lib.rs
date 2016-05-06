@@ -10,7 +10,7 @@ const LOOP_PREFIX: &'static str = "/dev/loop";
 
 #[derive(Debug,PartialEq)]
 pub struct LoopControl {
-    fd: libc::c_int,
+    fd: c_int,
 }
 
 pub fn open_loop_control(dev: &str) -> Result<LoopControl, String> {
@@ -48,6 +48,11 @@ impl Drop for LoopControl {
             close(self.fd);
         };
     }
+}
+
+pub struct LoopDevice {
+    device_fd: c_int,
+    backing_file_fd: c_int,
 }
 
 #[cfg(test)]
