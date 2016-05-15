@@ -37,7 +37,8 @@ struct Args {
 
 fn find() -> Result<String, String> {
     let lc = loopdev::open_loop_control("/dev/loop-control");
-    try!(lc.map_err(|e| format!("{}", e)).and_then(|l| Ok(l.next_free())))
+    let ld = try!(lc.map_err(|e| format!("{}", e)).and_then(|l| l.next_free()));
+    Ok(String::from(ld.device.to_str().unwrap()))
 }
 
 fn attach(image: String, loopdev: String) -> Result<(), String> {
