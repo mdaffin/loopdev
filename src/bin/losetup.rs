@@ -5,6 +5,8 @@ extern crate loopdev;
 use docopt::Docopt;
 use std::io::Write;
 use std::process::exit;
+use std::io;
+use loopdev::{LoopControl, LoopDevice};
 
 const USAGE: &'static str = "
 Usage:
@@ -23,6 +25,17 @@ Options:
  -V, --version  output version information and exit
 ";
 
+macro_rules! exit_error {
+    ($e:expr) => ({match $e {
+            Ok(d) => d,
+            Err(err) => {
+                writeln!(&mut std::io::stderr(), "{}", err).unwrap();
+                exit(1)
+            },
+        }
+    })
+}
+
 #[derive(Debug, RustcDecodable)]
 struct Args {
     cmd_attach: bool,
@@ -35,34 +48,27 @@ struct Args {
     flag_free: bool,
 }
 
-fn find() -> Result<String, String> {
-    let lc = loopdev::open_loop_control("/dev/loop-control");
-    let ld = try!(lc.map_err(|e| format!("{}", e)).and_then(|l| l.next_free()));
-    Ok(String::from(ld.device.to_str().unwrap()))
-}
-
-fn attach(image: String, loopdev: String) -> Result<(), String> {
-    println!("{} : {}", image, loopdev);
-    Err(String::from("TODO: command attach"))
-}
-
-fn detach(file: String) -> Result<(), String> {
-    Err(String::from("TODO: command detach"))
-}
-
-fn list() -> Result<(), String> {
-    Err(String::from("TODO: command list"))
-}
-
-macro_rules! exit_error {
-    ($e:expr) => ({match $e {
-            Ok(d) => d,
-            Err(err) => {
-                writeln!(&mut std::io::stderr(), "{}", err).unwrap();
-                exit(1)
-            },
+fn find() {
+    match LoopControl::open("/dev/loop-control").and_then(|lc| lc.next_free()) {
+        Ok(ld) => println!("{}", ld),
+        Err(err) => {
+            writeln!(&mut std::io::stderr(), "{}", err).unwrap();
+            exit(1)
         }
-    })
+    }
+}
+
+fn attach(image: String, loopdev: String) {
+    println!("{} : {}", image, loopdev);
+    exit_error!(Err(String::from("TODO: command attach")))
+}
+
+fn detach(file: String) {
+    exit_error!(Err(String::from("TODO: command detach")))
+}
+
+fn list() {
+    exit_error!(Err(String::from("TODO: command list")))
 }
 
 fn main() {
@@ -70,13 +76,13 @@ fn main() {
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
     if args.cmd_find {
-        println!("{}", exit_error!(find()));
+        find();
     } else if args.cmd_attach {
-        let loopdev = args.arg_loopdev.unwrap_or(exit_error!(find()));
-        exit_error!(attach(args.arg_image, loopdev));
+        // let loopdev = args.arg_loopdev.unwrap_or(exit_error!(find()));
+        attach(args.arg_image, String::from(""));
     } else if args.cmd_detach {
-        exit_error!(detach(args.arg_file));
+        detach(args.arg_file);
     } else {
-        exit_error!(list());
+        list();
     }
 }
