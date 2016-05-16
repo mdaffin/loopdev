@@ -5,8 +5,7 @@ extern crate loopdev;
 use docopt::Docopt;
 use std::io::Write;
 use std::process::exit;
-use std::io;
-use loopdev::{LoopControl, LoopDevice};
+use loopdev::LoopControl;
 
 const USAGE: &'static str = "
 Usage:
@@ -63,6 +62,7 @@ fn attach(image: String, loopdev: String) {
     exit_error!(Err(String::from("TODO: command attach")))
 }
 
+#[allow(unused_variables)]
 fn detach(file: String) {
     exit_error!(Err(String::from("TODO: command detach")))
 }

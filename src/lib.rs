@@ -1,11 +1,15 @@
 #[cfg(not(test))]
 extern crate libc;
+
+#[cfg(not(test))]
+use std::fs::OpenOptions;
+#[cfg(not(test))]
+use std::fs::File;
+
 #[cfg(test)]
-extern crate libc as real_libc;
+use mocks::{File, OpenOptions};
 
 use std::fmt;
-use std::fs::OpenOptions;
-use std::fs::File;
 use std::os::unix::prelude::*;
 use std::io;
 use std::path::PathBuf;
@@ -54,6 +58,7 @@ pub struct LoopDevice {
 
 impl LoopDevice {
     // Attach a loop device to a file.
+    #[allow(unused_variables)]
     pub fn attach(&self, backing_file: File) -> io::Result<()> {
         Ok(())
     }
@@ -71,18 +76,93 @@ impl fmt::Display for LoopDevice {
 }
 
 #[cfg(test)]
-mod libc {
-    use errno;
-    use std::cell::RefCell;
-    pub use real_libc::{c_int, c_ulong};
-    thread_local!(static RETURN_VALUE: RefCell<c_int> = RefCell::new(0));
+mod mocks {
+    use std::io;
+    use std::path::Path;
+    use libc::c_int;
+    use std::os::unix::prelude::AsRawFd;
 
-    pub fn set_return_value(value: c_int) {
-        RETURN_VALUE.with(|v| {
-            *v.borrow_mut() = value;
-        })
+    pub type RawFd = c_int;
+
+    #[derive(Debug)]
+    pub struct File {
+        fd: RawFd,
+        read: bool,
+        write: bool,
     }
 
+    impl File {
+        pub fn new(fd: RawFd, read: bool, write: bool) -> File {
+            File {
+                fd: fd,
+                read: read,
+                write: write,
+            }
+        }
+    }
+
+    impl AsRawFd for File {
+        fn as_raw_fd(&self) -> RawFd {
+            self.fd
+        }
+    }
+
+    pub struct OpenOptions {
+        read: bool,
+        write: bool,
+    }
+
+    impl OpenOptions {
+        pub fn new() -> OpenOptions {
+            OpenOptions {
+                read: false,
+                write: false,
+            }
+        }
+
+        pub fn read(&mut self, en: bool) -> &mut OpenOptions {
+            self.read = en;
+            self
+        }
+
+        pub fn write(&mut self, en: bool) -> &mut OpenOptions {
+            self.write = en;
+            self
+        }
+
+        #[allow(unused_variables)]
+        pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
+            if path.as_ref().to_str().unwrap() == "/dev/null" {
+                Err(io::Error::new(io::ErrorKind::PermissionDenied,
+                                   "/dev/loop-control: Operation not permitted"))
+            } else {
+                Ok(File {
+                    fd: 3,
+                    read: self.read,
+                    write: self.write,
+                })
+            }
+        }
+    }
+
+}
+
+#[cfg(test)]
+mod libc {
+    extern crate libc as real_libc;
+    extern crate errno;
+
+    use std::cell::RefCell;
+    pub use self::real_libc::{c_int, c_ulong};
+
+    thread_local!(static RETURN_VALUE: RefCell<c_int> = RefCell::new(0));
+
+    // pub fn set_return_value(value: c_int) {
+    //     RETURN_VALUE.with(|v| {
+    //         *v.borrow_mut() = value;
+    //     })
+    // }
+    //
     fn get_return_value() -> c_int {
         RETURN_VALUE.with(|v| {
             if *v.borrow() < 0 {
@@ -98,33 +178,29 @@ mod libc {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libc;
-    use std::path::PathBuf;
+    use mocks::File;
 
-    // macro_rules! lc_open {
-    //     ( $name:ident, $x:expr, $e:expr ) => {
-    //         #[test]
-    //         fn $name() {
-    //             libc::set_return_value($x);
-    //             assert_eq!(LoopControl::open("/dev/loop-control"), $e);
-    //         }
-    //     };
-    // }
-    //
-    // lc_open!(lc_open_0, 0, Ok(LoopControl { fd: 0 }));
-    // lc_open!(lc_open_1, 1, Ok(LoopControl { fd: 1 }));
-    // lc_open!(lc_open_2, 2, Ok(LoopControl { fd: 2 }));
-    // lc_open!(lc_open_100, 100, Ok(LoopControl { fd: 100 }));
-    // lc_open!(lc_open_large,
-    //          1024 * 1024,
-    //          Ok(LoopControl { fd: 1024 * 1024 }));
+    macro_rules! lc_open {
+        ( $name:ident, $i:expr, $r:expr ) => {
+            #[test]
+            fn $name() {
+                assert_eq!(format!("{:?}", LoopControl::open($i).unwrap()), format!("{:?}", $r));
+            }
+        };
+    }
+    lc_open!(lc_open_0,
+             "/dev/loop-control",
+             LoopControl { dev_file: File::new(3, true, true) });
+
+    // TODO get error tests working
     // lc_open!(lc_open_err,
-    //          -1,
-    //          Err(String::from("/dev/loop-control: Operation not permitted")));
-    //
+    //          "/dev/null",
+    //          LoopControl { dev_file: File::new(3, true, true) });
+
     // macro_rules! lc_next_free {
     //     ( $name:ident, $inp:expr, $out:expr, $exp:expr ) => {
     //         #[test]
