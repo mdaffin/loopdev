@@ -9,7 +9,6 @@ use std::fs::File;
 #[cfg(test)]
 use mocks::{File, OpenOptions};
 
-use std::fmt;
 use std::os::unix::prelude::*;
 use std::io;
 use std::path::PathBuf;
@@ -38,11 +37,7 @@ impl LoopControl {
         } else {
             let path = LOOP_PREFIX.to_string() + &result.to_string();
             Ok(LoopDevice {
-                device_name: PathBuf::from(path.clone()),
-                device: try!(OpenOptions::new()
-                                 .read(true)
-                                 .write(true)
-                                 .open(path)),
+                device: try!(OpenOptions::new().read(true).write(true).open(path)),
                 backing_file: None,
             })
         }
@@ -51,7 +46,6 @@ impl LoopControl {
 
 #[derive(Debug)]
 pub struct LoopDevice {
-    device_name: PathBuf,
     device: File,
     backing_file: Option<File>,
 }
@@ -59,19 +53,24 @@ pub struct LoopDevice {
 impl LoopDevice {
     // Attach a loop device to a file.
     #[allow(unused_variables)]
-    pub fn attach(&self, backing_file: File) -> io::Result<()> {
+    pub fn attach(&self, backing_file: File, offset: u64) -> io::Result<()> {
+        // open backing_file (rdwr)
+        // open device file (rdwr)
+        // ioctl(device_fd, LOOP_SET_FD, file_fd)
+        // info.lo_offset = offset;
+        // ioctl(device_fd, LOOP_SET_STATUS64, &info)
         Ok(())
+    }
+
+    pub fn get_path(&self) -> Option<PathBuf> {
+        let mut p = PathBuf::from("/proc/self/fd");
+        p.push(self.device.as_raw_fd().to_string());
+        std::fs::read_link(&p).ok()
     }
 
     // Detach a loop device from its backing file.
     pub fn detach(&self) -> io::Result<()> {
         Ok(())
-    }
-}
-
-impl fmt::Display for LoopDevice {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.device_name.display())
     }
 }
 
@@ -185,7 +184,6 @@ mod tests {
     use mocks::File;
     use std::io;
     use libc;
-    use std::path::PathBuf;
 
     macro_rules! lc_open {
         ( $name:ident, $i:expr, $r:expr ) => {
@@ -218,42 +216,36 @@ mod tests {
     lc_next_free!(lc_next_free_0,
                   0,
                   Ok(LoopDevice {
-                      device_name: PathBuf::from(String::from("/dev/loop0")),
                       device: File::new(3, true, true),
                       backing_file: None,
                   }));
     lc_next_free!(lc_next_free_1,
                   1,
                   Ok(LoopDevice {
-                      device_name: PathBuf::from(String::from("/dev/loop1")),
                       device: File::new(3, true, true),
                       backing_file: None,
                   }));
     lc_next_free!(lc_next_free_2,
                   2,
                   Ok(LoopDevice {
-                      device_name: PathBuf::from(String::from("/dev/loop2")),
                       device: File::new(3, true, true),
                       backing_file: None,
                   }));
     lc_next_free!(lc_next_free_10,
                   10,
                   Ok(LoopDevice {
-                      device_name: PathBuf::from(String::from("/dev/loop10")),
                       device: File::new(3, true, true),
                       backing_file: None,
                   }));
     lc_next_free!(lc_next_free_99,
                   99,
                   Ok(LoopDevice {
-                      device_name: PathBuf::from(String::from("/dev/loop99")),
                       device: File::new(3, true, true),
                       backing_file: None,
                   }));
     lc_next_free!(lc_next_free_100,
                   100,
                   Ok(LoopDevice {
-                      device_name: PathBuf::from(String::from("/dev/loop100")),
                       device: File::new(3, true, true),
                       backing_file: None,
                   }));

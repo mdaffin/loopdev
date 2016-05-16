@@ -49,7 +49,7 @@ struct Args {
 
 fn find() {
     match LoopControl::open("/dev/loop-control").and_then(|lc| lc.next_free()) {
-        Ok(ld) => println!("{}", ld),
+        Ok(ld) => println!("{}", ld.get_path().unwrap().display()),
         Err(err) => {
             writeln!(&mut std::io::stderr(), "{}", err).unwrap();
             exit(1)
