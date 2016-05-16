@@ -58,8 +58,8 @@ fn find() {
 }
 
 fn attach(image: String, loopdev: String) {
-    println!("{} : {}", image, loopdev);
-    exit_error!(Err(String::from("TODO: command attach")))
+    let mut ld = LoopControl::open("/dev/loop-control").and_then(|lc| lc.next_free()).unwrap();
+    ld.attach(&image, 0).unwrap();
 }
 
 #[allow(unused_variables)]
