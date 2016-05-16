@@ -134,7 +134,7 @@ mod mocks {
         pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
             if path.as_ref().to_str().unwrap() == "/dev/null" {
                 Err(io::Error::new(io::ErrorKind::PermissionDenied,
-                                   "/dev/loop-control: Operation not permitted"))
+                                   "/dev/null: Operation not permitted"))
             } else {
                 Ok(File {
                     fd: 3,
@@ -157,12 +157,12 @@ mod libc {
 
     thread_local!(static RETURN_VALUE: RefCell<c_int> = RefCell::new(0));
 
-    // pub fn set_return_value(value: c_int) {
-    //     RETURN_VALUE.with(|v| {
-    //         *v.borrow_mut() = value;
-    //     })
-    // }
-    //
+    pub fn set_return_value(value: c_int) {
+        RETURN_VALUE.with(|v| {
+            *v.borrow_mut() = value;
+        })
+    }
+
     fn get_return_value() -> c_int {
         RETURN_VALUE.with(|v| {
             if *v.borrow() < 0 {
@@ -183,116 +183,81 @@ mod libc {
 mod tests {
     use super::*;
     use mocks::File;
+    use std::io;
+    use libc;
+    use std::path::PathBuf;
 
     macro_rules! lc_open {
         ( $name:ident, $i:expr, $r:expr ) => {
             #[test]
             fn $name() {
-                assert_eq!(format!("{:?}", LoopControl::open($i).unwrap()), format!("{:?}", $r));
+                let r: io::Result<LoopControl> = $r;
+                assert_eq!(format!("{:?}", LoopControl::open($i)), format!("{:?}", r));
             }
         };
     }
-    lc_open!(lc_open_0,
+    lc_open!(lc_open_ok,
              "/dev/loop-control",
-             LoopControl { dev_file: File::new(3, true, true) });
+             Ok(LoopControl { dev_file: File::new(3, true, true) }));
+    lc_open!(lc_open_err,
+             "/dev/null",
+             Err(io::Error::new(io::ErrorKind::PermissionDenied,
+                                "/dev/null: Operation not permitted")));
 
-    // TODO get error tests working
-    // lc_open!(lc_open_err,
-    //          "/dev/null",
-    //          LoopControl { dev_file: File::new(3, true, true) });
-
-    // macro_rules! lc_next_free {
-    //     ( $name:ident, $inp:expr, $out:expr, $exp:expr ) => {
-    //         #[test]
-    //         fn $name() {
-    //             libc::set_return_value($out);
-    //             let lc = LoopControl { fd: $inp };
-    //             assert_eq!(lc.next_free(), $exp);
-    //         }
-    //     };
-    // }
-    //
-    // lc_next_free!(lc_next_free_0,
-    //               0,
-    //               0,
-    //               Ok(LoopDevice {
-    //                   device: PathBuf::from(String::from("/dev/loop0")),
-    //                   backing_file: None,
-    //                   device_fd: None,
-    //                   backing_file_fd: None,
-    //               }));
-    // lc_next_free!(lc_next_free_1,
-    //               1,
-    //               1,
-    //               Ok(LoopDevice {
-    //                   device: PathBuf::from(String::from("/dev/loop1")),
-    //                   backing_file: None,
-    //                   device_fd: None,
-    //                   backing_file_fd: None,
-    //               }));
-    // lc_next_free!(lc_next_free_2,
-    //               2,
-    //               2,
-    //               Ok(LoopDevice {
-    //                   device: PathBuf::from(String::from("/dev/loop2")),
-    //                   backing_file: None,
-    //                   device_fd: None,
-    //                   backing_file_fd: None,
-    //               }));
-    // lc_next_free!(lc_next_free_3,
-    //               5,
-    //               5,
-    //               Ok(LoopDevice {
-    //                   device: PathBuf::from(String::from("/dev/loop5")),
-    //                   backing_file: None,
-    //                   device_fd: None,
-    //                   backing_file_fd: None,
-    //               }));
-    // lc_next_free!(lc_next_free_4,
-    //               10,
-    //               10,
-    //               Ok(LoopDevice {
-    //                   device: PathBuf::from(String::from("/dev/loop10")),
-    //                   backing_file: None,
-    //                   device_fd: None,
-    //                   backing_file_fd: None,
-    //               }));
-    // lc_next_free!(lc_next_free_5,
-    //               54,
-    //               54,
-    //               Ok(LoopDevice {
-    //                   device: PathBuf::from(String::from("/dev/loop54")),
-    //                   backing_file: None,
-    //                   device_fd: None,
-    //                   backing_file_fd: None,
-    //               }));
-    // lc_next_free!(lc_next_free_7,
-    //               128,
-    //               128,
-    //               Ok(LoopDevice {
-    //                   device: PathBuf::from(String::from("/dev/loop128")),
-    //                   backing_file: None,
-    //                   device_fd: None,
-    //                   backing_file_fd: None,
-    //               }));
-    // lc_next_free!(lc_next_free_err_1,
-    //               123,
-    //               -1,
-    //               Err(String::from("Operation not permitted")));
-    // lc_next_free!(lc_next_free_err_2,
-    //               123,
-    //               -2,
-    //               Err(String::from("No such file or directory")));
-    // lc_next_free!(lc_next_free_err_3,
-    //               123,
-    //               -3,
-    //               Err(String::from("No such process")));
-    // #[test]
-    // #[should_panic(expected = "assertion failed")]
-    // #[allow(unused_must_use)]
-    // fn ln_next_free_panic() {
-    //     libc::set_return_value(-1);
-    //     let lc = LoopControl { fd: -1 };
-    //     lc.next_free();
-    // }
+    macro_rules! lc_next_free {
+        ( $name:ident, $out:expr, $exp:expr ) => {
+            #[test]
+            fn $name() {
+                libc::set_return_value($out);
+                let lc = LoopControl { dev_file: File::new(3, true, true) };
+                let exp: io::Result<LoopDevice> = $exp;
+                assert_eq!(format!("{:?}", lc.next_free()), format!("{:?}", exp));
+            }
+        };
+    }
+    lc_next_free!(lc_next_free_0,
+                  0,
+                  Ok(LoopDevice {
+                      device_name: PathBuf::from(String::from("/dev/loop0")),
+                      device: File::new(3, true, true),
+                      backing_file: None,
+                  }));
+    lc_next_free!(lc_next_free_1,
+                  1,
+                  Ok(LoopDevice {
+                      device_name: PathBuf::from(String::from("/dev/loop1")),
+                      device: File::new(3, true, true),
+                      backing_file: None,
+                  }));
+    lc_next_free!(lc_next_free_2,
+                  2,
+                  Ok(LoopDevice {
+                      device_name: PathBuf::from(String::from("/dev/loop2")),
+                      device: File::new(3, true, true),
+                      backing_file: None,
+                  }));
+    lc_next_free!(lc_next_free_10,
+                  10,
+                  Ok(LoopDevice {
+                      device_name: PathBuf::from(String::from("/dev/loop10")),
+                      device: File::new(3, true, true),
+                      backing_file: None,
+                  }));
+    lc_next_free!(lc_next_free_99,
+                  99,
+                  Ok(LoopDevice {
+                      device_name: PathBuf::from(String::from("/dev/loop99")),
+                      device: File::new(3, true, true),
+                      backing_file: None,
+                  }));
+    lc_next_free!(lc_next_free_100,
+                  100,
+                  Ok(LoopDevice {
+                      device_name: PathBuf::from(String::from("/dev/loop100")),
+                      device: File::new(3, true, true),
+                      backing_file: None,
+                  }));
+    lc_next_free!(lc_next_free_err_1, -1, Err(io::Error::from_raw_os_error(1)));
+    lc_next_free!(lc_next_free_err_2, -2, Err(io::Error::from_raw_os_error(2)));
+    lc_next_free!(lc_next_free_err_3, -3, Err(io::Error::from_raw_os_error(3)));
 }
