@@ -5,11 +5,11 @@ extern crate loopdev;
 use docopt::Docopt;
 use std::io::Write;
 use std::process::exit;
-use loopdev::LoopControl;
+use loopdev::{LoopControl, LoopDevice};
 
 const USAGE: &'static str = "
 Usage:
- losetup attach <image> [<loopdev>]
+ losetup attach [--offset=<num>] <image> [<loopdev>]
  losetup detach <file>
  losetup find
  losetup [list] [--free|--used]
@@ -18,13 +18,14 @@ Usage:
 Set up and control loop devices.
 
 Options:
- -f, --free     find unused devices
- -u, --used     find used devices
- -h, --help     display this help and exit
- -V, --version  output version information and exit
+ -f, --free          find unused devices
+ -u, --used          find used devices
+ -o, --offset <num>  start at at <num> into file
+ -h, --help          display this help and exit
+ -V, --version       output version information and exit
 ";
 
-macro_rules! exit_error {
+macro_rules! exit_on_error {
     ($e:expr) => ({match $e {
             Ok(d) => d,
             Err(err) => {
@@ -45,6 +46,7 @@ struct Args {
     arg_loopdev: Option<String>,
     arg_file: String,
     flag_free: bool,
+    flag_used: bool,
 }
 
 fn find() {
@@ -57,18 +59,21 @@ fn find() {
     }
 }
 
-fn attach(image: String, loopdev: String) {
-    let mut ld = LoopControl::open("/dev/loop-control").and_then(|lc| lc.next_free()).unwrap();
-    ld.attach(&image, 0).unwrap();
+fn attach(image: String, loopdev: Option<String>) {
+    exit_on_error!(match loopdev {
+                       None => LoopControl::open("/dev/loop-control").and_then(|lc| lc.next_free()),
+                       Some(dev) => LoopDevice::new(&dev),
+                   }
+                   .and_then(|ld| ld.attach(&image, 0)))
 }
 
 #[allow(unused_variables)]
-fn detach(file: String) {
-    exit_error!(Err(String::from("TODO: command detach")))
+fn detach(dev: String) {
+    exit_on_error!(LoopDevice::new(&dev).and_then(|ld| ld.detach()))
 }
 
-fn list() {
-    exit_error!(Err(String::from("TODO: command list")))
+fn list(free: bool, used: bool) {
+    exit_on_error!(Err(String::from("TODO: list loop devices")))
 }
 
 fn main() {
@@ -78,11 +83,15 @@ fn main() {
     if args.cmd_find {
         find();
     } else if args.cmd_attach {
-        // let loopdev = args.arg_loopdev.unwrap_or(exit_error!(find()));
-        attach(args.arg_image, String::from(""));
+        attach(args.arg_image, args.arg_loopdev);
     } else if args.cmd_detach {
         detach(args.arg_file);
     } else {
-        list();
+        // No flags given default to find all
+        if !args.flag_free && !args.flag_used {
+            list(true, true)
+        } else {
+            list(args.flag_free, args.flag_used);
+        }
     }
 }

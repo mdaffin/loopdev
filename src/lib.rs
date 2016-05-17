@@ -92,7 +92,7 @@ impl LoopDevice {
     }
 
     // Attach a loop device to a file.
-    pub fn attach(&mut self, backing_file: &str, offset: u64) -> io::Result<()> {
+    pub fn attach(&self, backing_file: &str, offset: u64) -> io::Result<()> {
         let bf = try!(OpenOptions::new().read(true).write(true).open(backing_file));
 
         // Attach backing_file to device
