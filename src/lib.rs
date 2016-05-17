@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use libc::{c_int, ioctl, uint8_t, uint32_t, uint64_t};
 
 static LOOP_SET_FD: u64 = 0x4C00;
+static LOOP_CLR_FD: u64 = 0x4C01;
 static LOOP_SET_STATUS64: u64 = 0x4C04;
 static LOOP_CTL_GET_FREE: u64 = 0x4C82;
 
@@ -104,6 +105,7 @@ impl LoopDevice {
             if ioctl(self.device.as_raw_fd() as c_int,
                      LOOP_SET_STATUS64,
                      &mut info) < 0 {
+                try!(self.detach());
                 return Err(io::Error::last_os_error());
             }
         }
@@ -118,6 +120,11 @@ impl LoopDevice {
 
     // Detach a loop device from its backing file.
     pub fn detach(&self) -> io::Result<()> {
+        unsafe {
+            if ioctl(self.device.as_raw_fd() as c_int, LOOP_CLR_FD, 0) < 0 {
+                return Err(io::Error::last_os_error());
+            }
+        }
         Ok(())
     }
 }
