@@ -85,6 +85,12 @@ impl Default for loop_info64 {
 }
 
 impl LoopDevice {
+    pub fn new(dev: &str) -> io::Result<LoopDevice> {
+        // TODO check dev is actually a loop device
+        let f = try!(OpenOptions::new().read(true).write(true).open(dev));
+        Ok(LoopDevice { device: f })
+    }
+
     // Attach a loop device to a file.
     pub fn attach(&mut self, backing_file: &str, offset: u64) -> io::Result<()> {
         let bf = try!(OpenOptions::new().read(true).write(true).open(backing_file));
