@@ -50,7 +50,7 @@ struct Args {
 }
 
 fn find() {
-    match LoopControl::open("/dev/loop-control").and_then(|lc| lc.next_free()) {
+    match LoopControl::open().and_then(|lc| lc.next_free()) {
         Ok(ld) => println!("{}", ld.get_path().unwrap().display()),
         Err(err) => {
             writeln!(&mut std::io::stderr(), "{}", err).unwrap();
@@ -61,15 +61,15 @@ fn find() {
 
 fn attach(image: String, loopdev: Option<String>) {
     exit_on_error!(match loopdev {
-                       None => LoopControl::open("/dev/loop-control").and_then(|lc| lc.next_free()),
-                       Some(dev) => LoopDevice::new(&dev),
+                       None => LoopControl::open().and_then(|lc| lc.next_free()),
+                       Some(dev) => LoopDevice::open(&dev),
                    }
                    .and_then(|ld| ld.attach(&image, 0)))
 }
 
 #[allow(unused_variables)]
 fn detach(dev: String) {
-    exit_on_error!(LoopDevice::new(&dev).and_then(|ld| ld.detach()))
+    exit_on_error!(LoopDevice::open(&dev).and_then(|ld| ld.detach()))
 }
 
 fn list(free: bool, used: bool) {

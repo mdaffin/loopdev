@@ -1,3 +1,21 @@
+//! This create provides a way to setup and control loop devices.
+//!
+//! It provides rust interface with similar functionalty to the linux utility `losetup`.
+//!
+//! # Examples
+//!
+//! ```rust
+//! use loopdev::LoopControl;
+//! let lc = LoopControl::open().unwrap();
+//! let ld = lc.next_free().unwrap();
+//!
+//! println!("{}", ld.get_path().unwrap().display());
+//!
+//! ld.attach("test.img", 0).unwrap();
+//! // ...
+//! ld.detach().unwrap();
+//! ```
+
 extern crate libc;
 
 use std::fs::OpenOptions;
@@ -7,25 +25,40 @@ use std::os::unix::prelude::*;
 use std::io;
 use std::path::PathBuf;
 use libc::{c_int, ioctl, uint8_t, uint32_t, uint64_t};
+use std::default::Default;
 
 static LOOP_SET_FD: u64 = 0x4C00;
 static LOOP_CLR_FD: u64 = 0x4C01;
 static LOOP_SET_STATUS64: u64 = 0x4C04;
 static LOOP_CTL_GET_FREE: u64 = 0x4C82;
 
+const LOOP_CONTROL: &'static str = "/dev/loop-control";
 const LOOP_PREFIX: &'static str = "/dev/loop";
 
+/// Interface to the loop control device: `/dev/loop-control`.
 #[derive(Debug)]
 pub struct LoopControl {
     dev_file: File,
 }
 
 impl LoopControl {
-    pub fn open(dev_file: &str) -> io::Result<LoopControl> {
-        Ok(LoopControl { dev_file: try!(OpenOptions::new().read(true).write(true).open(dev_file)) })
+    /// Opens the loop control device.
+    pub fn open() -> io::Result<LoopControl> {
+        Ok(LoopControl {
+            dev_file: try!(OpenOptions::new().read(true).write(true).open(LOOP_CONTROL)),
+        })
     }
 
-    // Finds and returns the next availble loop device
+    /// Finds and opens the next availble loop device.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use loopdev::LoopControl;
+    /// let lc = LoopControl::open().unwrap();
+    /// let ld = lc.next_free().unwrap();
+    /// println!("{}", ld.get_path().unwrap().display());
+    /// ```
     pub fn next_free(&self) -> io::Result<LoopDevice> {
         let result: i32;
         unsafe {
@@ -34,68 +67,42 @@ impl LoopControl {
         if result < 0 {
             Err(io::Error::last_os_error())
         } else {
-            let path = LOOP_PREFIX.to_string() + &result.to_string();
-            Ok(LoopDevice { device: try!(OpenOptions::new().read(true).write(true).open(path)) })
+            let dev = LOOP_PREFIX.to_string() + &result.to_string();
+            Ok(try!(LoopDevice::open(&dev)))
         }
     }
 }
 
+/// Interface to a loop device ie `/dev/loop0`.
 #[derive(Debug)]
 pub struct LoopDevice {
     device: File,
 }
 
-#[repr(C)]
-pub struct loop_info64 {
-    pub lo_device: uint64_t,
-    pub lo_inode: uint64_t,
-    pub lo_rdevice: uint64_t,
-    pub lo_offset: uint64_t,
-    pub lo_sizelimit: uint64_t,
-    pub lo_number: uint32_t,
-    pub lo_encrypt_type: uint32_t,
-    pub lo_encrypt_key_size: uint32_t,
-    pub lo_flags: uint32_t,
-    pub lo_file_name: [uint8_t; 64],
-    pub lo_crypt_name: [uint8_t; 64],
-    pub lo_encrypt_key: [uint8_t; 32],
-    pub lo_init: [uint64_t; 2],
-}
-
-use std::default::Default;
-
-impl Default for loop_info64 {
-    fn default() -> loop_info64 {
-        loop_info64 {
-            lo_device: 0,
-            lo_inode: 0,
-            lo_rdevice: 0,
-            lo_offset: 0,
-            lo_sizelimit: 0,
-            lo_number: 0,
-            lo_encrypt_type: 0,
-            lo_encrypt_key_size: 0,
-            lo_flags: 0,
-            lo_file_name: [0; 64],
-            lo_crypt_name: [0; 64],
-            lo_encrypt_key: [0; 32],
-            lo_init: [0; 2],
-        }
-    }
-}
-
 impl LoopDevice {
-    pub fn new(dev: &str) -> io::Result<LoopDevice> {
-        // TODO check dev is actually a loop device
+    /// Opens a loop device.
+    pub fn open(dev: &str) -> io::Result<LoopDevice> {
+        // TODO create dev if it does not exist and begins with LOOP_PREFIX
         let f = try!(OpenOptions::new().read(true).write(true).open(dev));
         Ok(LoopDevice { device: f })
     }
 
-    // Attach a loop device to a file.
+    /// Attach the loop device to a file starting at offset into the file.
+    ///
+    /// # Examples
+    ///
+    /// Attach the device to the start of a file.
+    ///
+    /// ```rust
+    /// use loopdev::LoopDevice;
+    /// let ld = LoopDevice::open("/dev/loop0").unwrap();
+    /// ld.attach("test.img", 0).unwrap();
+    /// # ld.detach().unwrap();
+    /// ```
     pub fn attach(&self, backing_file: &str, offset: u64) -> io::Result<()> {
         let bf = try!(OpenOptions::new().read(true).write(true).open(backing_file));
 
-        // Attach backing_file to device
+        // Attach the file
         unsafe {
             if ioctl(self.device.as_raw_fd() as c_int,
                      LOOP_SET_FD,
@@ -118,13 +125,23 @@ impl LoopDevice {
         Ok(())
     }
 
+    /// Get the path of the loop device.
     pub fn get_path(&self) -> Option<PathBuf> {
         let mut p = PathBuf::from("/proc/self/fd");
         p.push(self.device.as_raw_fd().to_string());
         std::fs::read_link(&p).ok()
     }
 
-    // Detach a loop device from its backing file.
+    /// Detach a loop device from its backing file.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use loopdev::LoopDevice;
+    /// let ld = LoopDevice::open("/dev/loop0").unwrap();
+    /// # ld.attach("test.img", 0).unwrap();
+    /// ld.detach().unwrap();
+    /// ```
     pub fn detach(&self) -> io::Result<()> {
         unsafe {
             if ioctl(self.device.as_raw_fd() as c_int, LOOP_CLR_FD, 0) < 0 {
@@ -132,5 +149,42 @@ impl LoopDevice {
             }
         }
         Ok(())
+    }
+}
+
+#[repr(C)]
+struct loop_info64 {
+    pub lo_device: uint64_t,
+    pub lo_inode: uint64_t,
+    pub lo_rdevice: uint64_t,
+    pub lo_offset: uint64_t,
+    pub lo_sizelimit: uint64_t,
+    pub lo_number: uint32_t,
+    pub lo_encrypt_type: uint32_t,
+    pub lo_encrypt_key_size: uint32_t,
+    pub lo_flags: uint32_t,
+    pub lo_file_name: [uint8_t; 64],
+    pub lo_crypt_name: [uint8_t; 64],
+    pub lo_encrypt_key: [uint8_t; 32],
+    pub lo_init: [uint64_t; 2],
+}
+
+impl Default for loop_info64 {
+    fn default() -> loop_info64 {
+        loop_info64 {
+            lo_device: 0,
+            lo_inode: 0,
+            lo_rdevice: 0,
+            lo_offset: 0,
+            lo_sizelimit: 0,
+            lo_number: 0,
+            lo_encrypt_type: 0,
+            lo_encrypt_key_size: 0,
+            lo_flags: 0,
+            lo_file_name: [0; 64],
+            lo_crypt_name: [0; 64],
+            lo_encrypt_key: [0; 32],
+            lo_init: [0; 2],
+        }
     }
 }
