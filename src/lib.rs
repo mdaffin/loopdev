@@ -95,7 +95,7 @@ impl LoopDevice {
     ///
     /// ```rust
     /// use loopdev::LoopDevice;
-    /// let ld = LoopDevice::open("/dev/loop0").unwrap();
+    /// let ld = LoopDevice::open("/dev/loop4").unwrap();
     /// ld.attach("test.img", 0).unwrap();
     /// # ld.detach().unwrap();
     /// ```
@@ -138,7 +138,7 @@ impl LoopDevice {
     ///
     /// ```rust
     /// use loopdev::LoopDevice;
-    /// let ld = LoopDevice::open("/dev/loop0").unwrap();
+    /// let ld = LoopDevice::open("/dev/loop6").unwrap();
     /// # ld.attach("test.img", 0).unwrap();
     /// ld.detach().unwrap();
     /// ```
