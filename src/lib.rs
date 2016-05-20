@@ -1,6 +1,6 @@
-//! This create provides a way to setup and control loop devices.
+//! Setup and control loop devices.
 //!
-//! It provides rust interface with similar functionalty to the linux utility `losetup`.
+//! Provides rust interface with similar functionalty to the linux utility `losetup`.
 //!
 //! # Examples
 //!

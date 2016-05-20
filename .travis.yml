@@ -1,31 +1,40 @@
 sudo: required
 language: rust
-
 addons:
   apt:
     packages:
-      - libcurl4-openssl-dev
-      - libelf-dev
-      - libdw-dev
+    - libcurl4-openssl-dev
+    - libelf-dev
+    - libdw-dev
 
 rust:
-  - nightly
-  - beta
-  - stable
-  - 1.8.0
-  - 1.7.0
+- nightly
+- beta
+- stable
+- 1.8.0
+- 1.7.0
 
 matrix:
   allow_failures:
-    - rust: nightly
+  - rust: nightly
 
 before_script:
-  - fallocate -l 128M test.img
+- fallocate -l 128M test.img
 
-script:
-  - cargo build
-  - sudo -E  env "PATH=$PATH" cargo test
+script: |
+  cargo build &&
+  sudo -E  env "PATH=$PATH" cargo test
+
+after_success: |
+  [ $TRAVIS_BRANCH = master ] &&
+  [ $TRAVIS_PULL_REQUEST = false ] &&
+  cargo doc &&
+  echo "<meta http-equiv=refresh content=0;url=`echo $TRAVIS_REPO_SLUG | cut -d '/' -f 2`/index.html>" > target/doc/index.html &&
+  sudo pip install ghp-import &&
+  ghp-import -n target/doc &&
+  git push -fq https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
 
 env:
   global:
-    - TRAVIS_CARGO_NIGHTLY_FEATURE=""
+  - TRAVIS_CARGO_NIGHTLY_FEATURE=""
+  - secure: DaBlEheizONBK0L0aBJVgID8k8WAB5Ab1hL3ZZTYvSU/OBVK1mRVKYvI3HAFoXVJg9m/r3hZBOKT2xHJQOcgjgrt/wFGi8SkCYmDLV/Y17+VSYAXh+bkLUbBs7JBjuSBlSnME1i7Gs0PrQIr3pjqtPhFhKnviErUuCcE3qHq2QF/uYD143xJAFyKrv3CTVj0/uWh/h2pjDOwG2sK5FQIxe/7Cq5B1gjjm9vuSWjUmgPNJXnenpT8fCQTxz06xFjNmMT7kPV8TLK2IN0lfxr3kL22M3YhSiEk1yWlQGz1Qkxw6ORQuu4Z4lbMFKZasbF1gfWidTTKU9H+WgpZKbJqZvuHZaB+OgLQjUWlMp3H83E8wwM81ZzfZWNoqyWrD/afBWjEgM5kFfMstfpbSD89lHTUbhSvAgc7qKDK2JpPFHXOCovJELdBO8S/EY0rj6PflUZPwe1qkBK/xOUIlpbbEF/v+6rBgrioZR4g4nr5awLIpfB3Gg4nEVrZTmB2cqEEpgVLu14QzEylwPjIajVCrKWOMdvCJmrZrS9Kl71d1ugM9E+8CsofodDmsHg7qqfNVkxKanuB3a1W8dJFaqZUOGDXguNVf/Z3tfn80cHhhUfx/O8a6YctEoXgIHXIKiPS3kyezdqU36qxTx6U+7oJ3yBrO3D6aogFhMQqS+TLFuE=

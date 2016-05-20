@@ -1,7 +1,12 @@
 [package]
 name = "loopdev"
+description = "Setup and control loop devices"
 version = "0.1.0"
 authors = ["Michael Daffin <michael@daffin.io>"]
+license = "MIT"
+repository = "https://github.com/mdaffin/loopdev"
+readme = "README.md"
+keywords = ["loop device", "losetup"]
 
 [dependencies]
 errno = "0.1"
