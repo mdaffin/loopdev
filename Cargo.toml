@@ -8,7 +8,7 @@ documentation = "https://disconnected.systems/loopdev/loopdev/"
 homepage = "https://disconnected.systems/loopdev/loopdev/"
 repository = "https://github.com/mdaffin/loopdev"
 readme = "README.md"
-keywords = ["loop device", "losetup"]
+keywords = ["loop", "losetup"]
 
 [dependencies]
 errno = "0.1"
