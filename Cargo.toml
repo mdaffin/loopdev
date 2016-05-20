@@ -7,4 +7,4 @@ authors = ["Michael Daffin <michael@daffin.io>"]
 errno = "0.1"
 libc = "0.2"
 docopt = "0.6"
-rustc-serialize = "0.3"  # if you're using `derive(RustcDecodable)`
+rustc-serialize = "0.3"

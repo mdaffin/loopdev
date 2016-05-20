@@ -15,6 +15,10 @@ rust:
   - 1.8.0
   - 1.7.0
 
+matrix:
+  allow_failures:
+    - rust: nightly
+
 before_script:
   - fallocate -l 128M test.img
 
