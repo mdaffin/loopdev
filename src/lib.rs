@@ -49,7 +49,7 @@ impl LoopControl {
         })
     }
 
-    /// Finds and opens the next availble loop device.
+    /// Finds and opens the next available loop device.
     ///
     /// # Examples
     ///
