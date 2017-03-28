@@ -67,8 +67,7 @@ impl LoopControl {
         if result < 0 {
             Err(io::Error::last_os_error())
         } else {
-            let dev = LOOP_PREFIX.to_string() + &result.to_string();
-            Ok(try!(LoopDevice::open(&dev)))
+            Ok(try!(LoopDevice::open(&format!("{}{}", LOOP_PREFIX, result))))
         }
     }
 }
