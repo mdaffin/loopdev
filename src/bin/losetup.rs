@@ -67,12 +67,11 @@ fn attach(image: String, loopdev: Option<String>) {
                    .and_then(|ld| ld.attach(&image, 0)))
 }
 
-#[allow(unused_variables)]
 fn detach(dev: String) {
     exit_on_error!(LoopDevice::open(&dev).and_then(|ld| ld.detach()))
 }
 
-fn list(free: bool, used: bool) {
+fn list(_free: bool, _used: bool) {
     exit_on_error!(Err(String::from("TODO: list loop devices")))
 }
 
