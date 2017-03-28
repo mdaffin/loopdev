@@ -23,7 +23,7 @@ use std::fs::File;
 
 use std::os::unix::prelude::*;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use libc::{c_int, ioctl, uint8_t, uint32_t, uint64_t};
 use std::default::Default;
 
@@ -49,7 +49,7 @@ impl LoopControl {
         })
     }
 
-    /// Finds and opens the next availble loop device.
+    /// Finds and opens the next available loop device.
     ///
     /// # Examples
     ///
@@ -60,15 +60,14 @@ impl LoopControl {
     /// println!("{}", ld.get_path().unwrap().display());
     /// ```
     pub fn next_free(&self) -> io::Result<LoopDevice> {
-        let result: i32;
+        let result;
         unsafe {
             result = ioctl(self.dev_file.as_raw_fd() as c_int, LOOP_CTL_GET_FREE);
         }
         if result < 0 {
             Err(io::Error::last_os_error())
         } else {
-            let dev = LOOP_PREFIX.to_string() + &result.to_string();
-            Ok(try!(LoopDevice::open(&dev)))
+            Ok(try!(LoopDevice::open(&format!("{}{}", LOOP_PREFIX, result))))
         }
     }
 }
@@ -81,7 +80,7 @@ pub struct LoopDevice {
 
 impl LoopDevice {
     /// Opens a loop device.
-    pub fn open(dev: &str) -> io::Result<LoopDevice> {
+    pub fn open<P: AsRef<Path>>(dev: P) -> io::Result<LoopDevice> {
         // TODO create dev if it does not exist and begins with LOOP_PREFIX
         let f = try!(OpenOptions::new().read(true).write(true).open(dev));
         Ok(LoopDevice { device: f })
@@ -99,7 +98,7 @@ impl LoopDevice {
     /// ld.attach("test.img", 0).unwrap();
     /// # ld.detach().unwrap();
     /// ```
-    pub fn attach(&self, backing_file: &str, offset: u64) -> io::Result<()> {
+    pub fn attach<P: AsRef<Path>>(&self, backing_file: P, offset: u64) -> io::Result<()> {
         let bf = try!(OpenOptions::new().read(true).write(true).open(backing_file));
 
         // Attach the file
