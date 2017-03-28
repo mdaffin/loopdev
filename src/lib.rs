@@ -60,7 +60,7 @@ impl LoopControl {
     /// println!("{}", ld.get_path().unwrap().display());
     /// ```
     pub fn next_free(&self) -> io::Result<LoopDevice> {
-        let result: i32;
+        let result;
         unsafe {
             result = ioctl(self.dev_file.as_raw_fd() as c_int, LOOP_CTL_GET_FREE);
         }
