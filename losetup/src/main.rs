@@ -1,29 +1,10 @@
-extern crate rustc_serialize;
-extern crate docopt;
+#[macro_use]
+extern crate clap;
 extern crate loopdev;
 
-use docopt::Docopt;
 use std::io::Write;
 use std::process::exit;
 use loopdev::{LoopControl, LoopDevice};
-
-const USAGE: &'static str = "
-Usage:
- losetup attach [--offset=<num>] <image> [<loopdev>]
- losetup detach <file>
- losetup find
- losetup [list] [--free|--used]
- losetup (--help|--version)
-
-Set up and control loop devices.
-
-Options:
- -f, --free          find unused devices
- -u, --used          find used devices
- -o, --offset <num>  start at at <num> into file
- -h, --help          display this help and exit
- -V, --version       output version information and exit
-";
 
 macro_rules! exit_on_error {
     ($e:expr) => ({match $e {
@@ -36,19 +17,6 @@ macro_rules! exit_on_error {
     })
 }
 
-#[derive(Debug, RustcDecodable)]
-struct Args {
-    cmd_attach: bool,
-    cmd_detach: bool,
-    cmd_find: bool,
-    cmd_list: bool,
-    arg_image: String,
-    arg_loopdev: Option<String>,
-    arg_file: String,
-    flag_free: bool,
-    flag_used: bool,
-}
-
 fn find() {
     match LoopControl::open().and_then(|lc| lc.next_free()) {
         Ok(ld) => println!("{}", ld.get_path().unwrap().display()),
@@ -59,38 +27,57 @@ fn find() {
     }
 }
 
-fn attach(image: String, loopdev: Option<String>) {
+fn attach(image: &str, loopdev: Option<&str>, offset: u64) {
     exit_on_error!(match loopdev {
-                       None => LoopControl::open().and_then(|lc| lc.next_free()),
-                       Some(dev) => LoopDevice::open(&dev),
-                   }
-                   .and_then(|ld| ld.attach(&image, 0)))
+                           None => LoopControl::open().and_then(|lc| lc.next_free()),
+                           Some(dev) => LoopDevice::open(&dev),
+                       }
+                       .and_then(|ld| ld.attach(&image, offset)))
 }
 
-fn detach(dev: String) {
-    exit_on_error!(LoopDevice::open(&dev).and_then(|ld| ld.detach()))
+fn detach(dev: &str) {
+    exit_on_error!(LoopDevice::open(dev).and_then(|ld| ld.detach()))
 }
 
 fn list(_free: bool, _used: bool) {
-    exit_on_error!(Err(String::from("TODO: list loop devices")))
+    unimplemented!();
 }
 
 fn main() {
-    let args: Args = Docopt::new(USAGE)
-                         .and_then(|d| d.decode())
-                         .unwrap_or_else(|e| e.exit());
-    if args.cmd_find {
+    let matches = clap_app!(losetup =>
+        (version: "0.1.2")
+        (author: "Michael Daffin <michael@daffin.io>")
+        (about: "Setup and control loop devices")
+        (@subcommand find =>
+            (about: "find the next free loop device")
+	)
+        (@subcommand attach =>
+            (about: "attach the loop device to a backing file")
+	    (@arg image: +required "the backing file to attach")
+	    (@arg loopdev: "the loop device to attach")
+            (@arg offset: -o --offset +takes_value "the offset within the file to start at")
+	)
+        (@subcommand detach =>
+            (about: "detach the loop device from the backing file")
+	    (@arg file: +required "The file to detach")
+	)
+        (@subcommand list =>
+            (about: "list the available loop devices")
+            (@arg free: -f --free "find free devices")
+            (@arg used: -u --used "find used devices")
+	)
+    ).get_matches();
+
+    if let Some(_) = matches.subcommand_matches("find") {
         find();
-    } else if args.cmd_attach {
-        attach(args.arg_image, args.arg_loopdev);
-    } else if args.cmd_detach {
-        detach(args.arg_file);
+    } else if let Some(matches) = matches.subcommand_matches("attach") {
+        let image = matches.value_of("image").unwrap();
+        let loopdev = matches.value_of("loopdev");
+        attach(image, loopdev, matches.value_of("offset").unwrap_or(0));
+    } else if let Some(matches) = matches.subcommand_matches("detach") {
+        let file = matches.value_of("file").unwrap();
+        detach(file);
     } else {
-        // No flags given default to find all
-        if !args.flag_free && !args.flag_used {
-            list(true, true)
-        } else {
-            list(args.flag_free, args.flag_used);
-        }
+        list(matches.is_present("free"), matches.is_present("used"));
     }
 }

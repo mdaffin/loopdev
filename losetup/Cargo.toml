@@ -1,9 +1,10 @@
 [package]
 authors = ["Michael Daffin <michael@daffin.io>"]
 name = "losetup"
-version = "0.1.1"
+version = "0.1.2"
 
 [dependencies]
+clap = "2.23.3"
 docopt = "0.7.0"
 rustc-serialize = "0.3.24"
 
