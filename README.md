@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/mdaffin/loopdev.svg?branch=master)](https://travis-ci.org/mdaffin/loopdev)
+[![crates.io](https://img.shields.io/crates/v/loopdev.svg)](https://crates.io/crates/loopdev)
 
 # loopdev
 
