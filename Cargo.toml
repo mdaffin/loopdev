@@ -9,6 +9,9 @@ repository = "https://github.com/mdaffin/loopdev"
 readme = "README.md"
 keywords = ["loop", "losetup"]
 
+[badges]
+travis-ci = { repository = "serde-rs/serde" }
+
 [dependencies]
 errno = "0.1"
 libc = "0.2"

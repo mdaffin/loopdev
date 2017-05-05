@@ -7,7 +7,9 @@ Setup and control loop devices.
 
 Provides rust interface with similar functionalty to the linux utility `losetup`.
 
-# Examples
+## [Documentation](https://docs.rs/crate/loopdev)
+
+## Examples
 
 ```rust
 use loopdev::LoopControl;
