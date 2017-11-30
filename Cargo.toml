@@ -13,5 +13,5 @@ keywords = ["loop", "losetup"]
 travis-ci = { repository = "serde-rs/serde" }
 
 [dependencies]
-errno = "0.1"
+errno = "0.2"
 libc = "0.2"
