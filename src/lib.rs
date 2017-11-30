@@ -27,10 +27,10 @@ use std::path::{Path, PathBuf};
 use libc::{c_int, ioctl, uint8_t, uint32_t, uint64_t};
 use std::default::Default;
 
-static LOOP_SET_FD: u64 = 0x4C00;
-static LOOP_CLR_FD: u64 = 0x4C01;
-static LOOP_SET_STATUS64: u64 = 0x4C04;
-static LOOP_CTL_GET_FREE: u64 = 0x4C82;
+static LOOP_SET_FD: u16 = 0x4C00;
+static LOOP_CLR_FD: u16 = 0x4C01;
+static LOOP_SET_STATUS64: u16 = 0x4C04;
+static LOOP_CTL_GET_FREE: u16 = 0x4C82;
 
 const LOOP_CONTROL: &'static str = "/dev/loop-control";
 const LOOP_PREFIX: &'static str = "/dev/loop";
@@ -62,7 +62,7 @@ impl LoopControl {
     pub fn next_free(&self) -> io::Result<LoopDevice> {
         let result;
         unsafe {
-            result = ioctl(self.dev_file.as_raw_fd() as c_int, LOOP_CTL_GET_FREE);
+            result = ioctl(self.dev_file.as_raw_fd() as c_int, LOOP_CTL_GET_FREE.into());
         }
         if result < 0 {
             Err(io::Error::last_os_error())
@@ -104,7 +104,7 @@ impl LoopDevice {
         // Attach the file
         unsafe {
             if ioctl(self.device.as_raw_fd() as c_int,
-                     LOOP_SET_FD,
+                     LOOP_SET_FD.into(),
                      bf.as_raw_fd() as c_int) < 0 {
                 return Err(io::Error::last_os_error());
             }
@@ -115,7 +115,7 @@ impl LoopDevice {
         info.lo_offset = offset;
         unsafe {
             if ioctl(self.device.as_raw_fd() as c_int,
-                     LOOP_SET_STATUS64,
+                     LOOP_SET_STATUS64.into(),
                      &mut info) < 0 {
                 try!(self.detach());
                 return Err(io::Error::last_os_error());
@@ -143,7 +143,7 @@ impl LoopDevice {
     /// ```
     pub fn detach(&self) -> io::Result<()> {
         unsafe {
-            if ioctl(self.device.as_raw_fd() as c_int, LOOP_CLR_FD, 0) < 0 {
+            if ioctl(self.device.as_raw_fd() as c_int, LOOP_CLR_FD.into(), 0) < 0 {
                 return Err(io::Error::last_os_error());
             }
         }
