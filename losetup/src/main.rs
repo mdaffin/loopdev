@@ -28,11 +28,12 @@ fn find() {
 }
 
 fn attach(image: &str, loopdev: Option<&str>, offset: u64) {
-    exit_on_error!(match loopdev {
-                           None => LoopControl::open().and_then(|lc| lc.next_free()),
-                           Some(dev) => LoopDevice::open(&dev),
-                       }
-                       .and_then(|ld| ld.attach(&image, offset)))
+    exit_on_error!(
+        match loopdev {
+            None => LoopControl::open().and_then(|lc| lc.next_free()),
+            Some(dev) => LoopDevice::open(&dev),
+        }.and_then(|ld| ld.attach(&image, offset))
+    )
 }
 
 fn detach(dev: &str) {
@@ -73,7 +74,11 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches("attach") {
         let image = matches.value_of("image").unwrap();
         let loopdev = matches.value_of("loopdev");
-        attach(image, loopdev, matches.value_of("offset").unwrap_or(0));
+        attach(
+            image,
+            loopdev,
+            value_t!(matches.value_of("offset"), u64).unwrap_or(0),
+        );
     } else if let Some(matches) = matches.subcommand_matches("detach") {
         let file = matches.value_of("file").unwrap();
         detach(file);
