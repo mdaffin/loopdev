@@ -11,7 +11,7 @@
 //!
 //! println!("{}", ld.get_path().unwrap().display());
 //!
-//! ld.attach("test.img", 0).unwrap();
+//! ld.attach("test.img", 0, None).unwrap();
 //! // ...
 //! ld.detach().unwrap();
 //! ```
@@ -97,10 +97,10 @@ impl LoopDevice {
     /// ```rust
     /// use loopdev::LoopDevice;
     /// let ld = LoopDevice::open("/dev/loop4").unwrap();
-    /// ld.attach("test.img", 0).unwrap();
+    /// ld.attach("test.img", 0, None).unwrap();
     /// # ld.detach().unwrap();
     /// ```
-    pub fn attach<P: AsRef<Path>>(&self, backing_file: P, offset: u64) -> io::Result<()> {
+    pub fn attach<P: AsRef<Path>>(&self, backing_file: P, offset: u64, size: Option<u64>) -> io::Result<()> {
         let bf = try!(OpenOptions::new().read(true).write(true).open(backing_file));
 
         // Attach the file
@@ -118,6 +118,9 @@ impl LoopDevice {
         // Set offset for backing_file
         let mut info: loop_info64 = Default::default();
         info.lo_offset = offset;
+        if let Some(size) = size {
+            info.lo_sizelimit = size;
+        }
         unsafe {
             if ioctl(
                 self.device.as_raw_fd() as c_int,
@@ -146,7 +149,7 @@ impl LoopDevice {
     /// ```rust
     /// use loopdev::LoopDevice;
     /// let ld = LoopDevice::open("/dev/loop6").unwrap();
-    /// # ld.attach("test.img", 0).unwrap();
+    /// # ld.attach("test.img", 0, None).unwrap();
     /// ld.detach().unwrap();
     /// ```
     pub fn detach(&self) -> io::Result<()> {

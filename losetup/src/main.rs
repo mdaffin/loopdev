@@ -32,7 +32,7 @@ fn attach(image: &str, loopdev: Option<&str>, offset: u64) {
         match loopdev {
             None => LoopControl::open().and_then(|lc| lc.next_free()),
             Some(dev) => LoopDevice::open(&dev),
-        }.and_then(|ld| ld.attach(&image, offset))
+        }.and_then(|ld| ld.attach(&image, offset, None))
     )
 }
 
