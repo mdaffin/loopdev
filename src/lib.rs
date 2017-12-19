@@ -87,8 +87,6 @@ impl LoopDevice {
     }
 
     /// Attach the loop device to a file starting at offset into the file.
-    ///
-    /// **Deprecated** use `attach_file`, `attach_with_offset` or `attach_with_size` instead.
     #[deprecated(since = "0.2.0", note = "use `attach_file` or `attach_with_offset` instead")]
     pub fn attach<P: AsRef<Path>>(&self, backing_file: P, offset: u64) -> io::Result<()> {
         self.attach_with_size(backing_file, offset, 0)
@@ -173,7 +171,13 @@ impl LoopDevice {
     }
 
     /// Get the path of the loop device.
+    #[deprecated(since = "0.2.0", note = "use `path` instead")]
     pub fn get_path(&self) -> Option<PathBuf> {
+        self.path()
+    }
+
+    /// Get the path of the loop device.
+    pub fn path(&self) -> Option<PathBuf> {
         let mut p = PathBuf::from("/proc/self/fd");
         p.push(self.device.as_raw_fd().to_string());
         std::fs::read_link(&p).ok()
@@ -192,10 +196,11 @@ impl LoopDevice {
     pub fn detach(&self) -> io::Result<()> {
         unsafe {
             if ioctl(self.device.as_raw_fd() as c_int, LOOP_CLR_FD.into(), 0) < 0 {
-                return Err(io::Error::last_os_error());
+                Err(io::Error::last_os_error())
+            } else {
+                Ok(())
             }
         }
-        Ok(())
     }
 }
 
