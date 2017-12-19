@@ -11,7 +11,7 @@
 //!
 //! println!("{}", ld.get_path().unwrap().display());
 //!
-//! ld.attach("test.img", 0, None).unwrap();
+//! ld.attach_file("test.img").unwrap();
 //! // ...
 //! ld.detach().unwrap();
 //! ```
@@ -67,9 +67,7 @@ impl LoopControl {
         if result < 0 {
             Err(io::Error::last_os_error())
         } else {
-            Ok(try!(
-                LoopDevice::open(&format!("{}{}", LOOP_PREFIX, result))
-            ))
+            Ok(try!(LoopDevice::open(&format!("{}{}", LOOP_PREFIX, result))))
         }
     }
 }
@@ -90,27 +88,71 @@ impl LoopDevice {
 
     /// Attach the loop device to a file starting at offset into the file.
     ///
+    /// **Deprecated** use `attach_file`, `attach_with_offset` or `attach_with_size` instead.
+    #[deprecated(since = "0.2.0", note = "use `attach_file` or `attach_with_offset` instead")]
+    pub fn attach<P: AsRef<Path>>(&self, backing_file: P, offset: u64) -> io::Result<()> {
+        self.attach_with_size(backing_file, offset, 0)
+    }
+
+    /// Attach the loop device to a file that maps to the whole file.
+    ///
+    /// # Examples
+    ///
+    /// Attach the device to a file.
+    ///
+    /// ```rust
+    /// use loopdev::LoopDevice;
+    /// let ld = LoopDevice::open("/dev/loop4").unwrap();
+    /// ld.attach_file("test.img").unwrap();
+    /// # ld.detach().unwrap();
+    /// ```
+    pub fn attach_file<P: AsRef<Path>>(&self, backing_file: P) -> io::Result<()> {
+        self.attach_with_size(backing_file, 0, 0)
+    }
+
+    /// Attach the loop device to a file starting at offset into the file.
+    ///
     /// # Examples
     ///
     /// Attach the device to the start of a file.
     ///
     /// ```rust
     /// use loopdev::LoopDevice;
-    /// let ld = LoopDevice::open("/dev/loop4").unwrap();
-    /// ld.attach("test.img", 0, None).unwrap();
+    /// let ld = LoopDevice::open("/dev/loop5").unwrap();
+    /// ld.attach_with_offset("test.img", 0).unwrap();
     /// # ld.detach().unwrap();
     /// ```
-    pub fn attach<P: AsRef<Path>>(&self, backing_file: P, offset: u64, size: Option<u64>) -> io::Result<()> {
+    pub fn attach_with_offset<P: AsRef<Path>>(&self,
+                                              backing_file: P,
+                                              offset: u64)
+                                              -> io::Result<()> {
+        self.attach_with_size(backing_file, offset, 0)
+    }
+
+    /// Attach the loop device to a file starting at offset into the file with a length of size.
+    ///
+    /// # Examples
+    ///
+    /// Attach the device to the start of a file with a size of 1024 bytes.
+    ///
+    /// ```rust
+    /// use loopdev::LoopDevice;
+    /// let ld = LoopDevice::open("/dev/loop6").unwrap();
+    /// ld.attach_with_size("test.img", 0, 1024).unwrap();
+    /// # ld.detach().unwrap();
+    /// ```
+    pub fn attach_with_size<P: AsRef<Path>>(&self,
+                                            backing_file: P,
+                                            offset: u64,
+                                            size: u64)
+                                            -> io::Result<()> {
         let bf = try!(OpenOptions::new().read(true).write(true).open(backing_file));
 
         // Attach the file
         unsafe {
-            if ioctl(
-                self.device.as_raw_fd() as c_int,
-                LOOP_SET_FD.into(),
-                bf.as_raw_fd() as c_int,
-            ) < 0
-            {
+            if ioctl(self.device.as_raw_fd() as c_int,
+                     LOOP_SET_FD.into(),
+                     bf.as_raw_fd() as c_int) < 0 {
                 return Err(io::Error::last_os_error());
             }
         }
@@ -118,16 +160,11 @@ impl LoopDevice {
         // Set offset for backing_file
         let mut info: loop_info64 = Default::default();
         info.lo_offset = offset;
-        if let Some(size) = size {
-            info.lo_sizelimit = size;
-        }
+        info.lo_sizelimit = size;
         unsafe {
-            if ioctl(
-                self.device.as_raw_fd() as c_int,
-                LOOP_SET_STATUS64.into(),
-                &mut info,
-            ) < 0
-            {
+            if ioctl(self.device.as_raw_fd() as c_int,
+                     LOOP_SET_STATUS64.into(),
+                     &mut info) < 0 {
                 try!(self.detach());
                 return Err(io::Error::last_os_error());
             }
@@ -148,8 +185,8 @@ impl LoopDevice {
     ///
     /// ```rust
     /// use loopdev::LoopDevice;
-    /// let ld = LoopDevice::open("/dev/loop6").unwrap();
-    /// # ld.attach("test.img", 0, None).unwrap();
+    /// let ld = LoopDevice::open("/dev/loop7").unwrap();
+    /// # ld.attach_file("test.img").unwrap();
     /// ld.detach().unwrap();
     /// ```
     pub fn detach(&self) -> io::Result<()> {
