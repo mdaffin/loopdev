@@ -16,9 +16,9 @@ use loopdev::LoopControl;
 let lc = LoopControl::open().unwrap();
 let ld = lc.next_free().unwrap();
 
-println!("{}", ld.get_path().unwrap().display());
+println!("{}", ld.path().unwrap().display());
 
-ld.attach("test.img", 0).unwrap();
+ld.attach_file("test.img").unwrap();
 // ...
 ld.detach().unwrap();
 ```

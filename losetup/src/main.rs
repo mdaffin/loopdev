@@ -19,7 +19,7 @@ macro_rules! exit_on_error {
 
 fn find() {
     match LoopControl::open().and_then(|lc| lc.next_free()) {
-        Ok(ld) => println!("{}", ld.get_path().unwrap().display()),
+        Ok(ld) => println!("{}", ld.path().unwrap().display()),
         Err(err) => {
             writeln!(&mut std::io::stderr(), "{}", err).unwrap();
             exit(1)
@@ -27,13 +27,12 @@ fn find() {
     }
 }
 
-fn attach(image: &str, loopdev: Option<&str>, offset: u64) {
-    exit_on_error!(
-        match loopdev {
+fn attach(image: &str, loopdev: Option<&str>, offset: u64, sizelimit: u64) {
+    exit_on_error!(match loopdev {
             None => LoopControl::open().and_then(|lc| lc.next_free()),
             Some(dev) => LoopDevice::open(&dev),
-        }.and_then(|ld| ld.attach(&image, offset, None))
-    )
+        }
+        .and_then(|ld| ld.attach_with_sizelimit(&image, offset, sizelimit)))
 }
 
 fn detach(dev: &str) {
@@ -57,6 +56,7 @@ fn main() {
 	    (@arg image: +required "the backing file to attach")
 	    (@arg loopdev: "the loop device to attach")
             (@arg offset: -o --offset +takes_value "the offset within the file to start at")
+            (@arg sizelimit: -s --sizelimit +takes_value "the file is limited to this size")
 	)
         (@subcommand detach =>
             (about: "detach the loop device from the backing file")
@@ -67,18 +67,18 @@ fn main() {
             (@arg free: -f --free "find free devices")
             (@arg used: -u --used "find used devices")
 	)
-    ).get_matches();
+    )
+        .get_matches();
 
     if let Some(_) = matches.subcommand_matches("find") {
         find();
     } else if let Some(matches) = matches.subcommand_matches("attach") {
         let image = matches.value_of("image").unwrap();
         let loopdev = matches.value_of("loopdev");
-        attach(
-            image,
-            loopdev,
-            value_t!(matches.value_of("offset"), u64).unwrap_or(0),
-        );
+        attach(image,
+               loopdev,
+               value_t!(matches.value_of("offset"), u64).unwrap_or(0),
+               value_t!(matches.value_of("sizelimit"), u64).unwrap_or(0));
     } else if let Some(matches) = matches.subcommand_matches("detach") {
         let file = matches.value_of("file").unwrap();
         detach(file);

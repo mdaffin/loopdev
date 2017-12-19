@@ -9,7 +9,7 @@
 //! let lc = LoopControl::open().unwrap();
 //! let ld = lc.next_free().unwrap();
 //!
-//! println!("{}", ld.get_path().unwrap().display());
+//! println!("{}", ld.path().unwrap().display());
 //!
 //! ld.attach_file("test.img").unwrap();
 //! // ...
@@ -57,7 +57,7 @@ impl LoopControl {
     /// use loopdev::LoopControl;
     /// let lc = LoopControl::open().unwrap();
     /// let ld = lc.next_free().unwrap();
-    /// println!("{}", ld.get_path().unwrap().display());
+    /// println!("{}", ld.path().unwrap().display());
     /// ```
     pub fn next_free(&self) -> io::Result<LoopDevice> {
         let result;
@@ -89,7 +89,7 @@ impl LoopDevice {
     /// Attach the loop device to a file starting at offset into the file.
     #[deprecated(since = "0.2.0", note = "use `attach_file` or `attach_with_offset` instead")]
     pub fn attach<P: AsRef<Path>>(&self, backing_file: P, offset: u64) -> io::Result<()> {
-        self.attach_with_size(backing_file, offset, 0)
+        self.attach_with_sizelimit(backing_file, offset, 0)
     }
 
     /// Attach the loop device to a file that maps to the whole file.
@@ -105,7 +105,7 @@ impl LoopDevice {
     /// # ld.detach().unwrap();
     /// ```
     pub fn attach_file<P: AsRef<Path>>(&self, backing_file: P) -> io::Result<()> {
-        self.attach_with_size(backing_file, 0, 0)
+        self.attach_with_sizelimit(backing_file, 0, 0)
     }
 
     /// Attach the loop device to a file starting at offset into the file.
@@ -124,26 +124,26 @@ impl LoopDevice {
                                               backing_file: P,
                                               offset: u64)
                                               -> io::Result<()> {
-        self.attach_with_size(backing_file, offset, 0)
+        self.attach_with_sizelimit(backing_file, offset, 0)
     }
 
-    /// Attach the loop device to a file starting at offset into the file with a length of size.
+    /// Attach the loop device to a file starting at offset into the file and a the given sizelimit.
     ///
     /// # Examples
     ///
-    /// Attach the device to the start of a file with a size of 1024 bytes.
+    /// Attach the device to the start of a file with a maximum size of 1024 bytes.
     ///
     /// ```rust
     /// use loopdev::LoopDevice;
     /// let ld = LoopDevice::open("/dev/loop6").unwrap();
-    /// ld.attach_with_size("test.img", 0, 1024).unwrap();
+    /// ld.attach_with_sizelimit("test.img", 0, 1024).unwrap();
     /// # ld.detach().unwrap();
     /// ```
-    pub fn attach_with_size<P: AsRef<Path>>(&self,
-                                            backing_file: P,
-                                            offset: u64,
-                                            size: u64)
-                                            -> io::Result<()> {
+    pub fn attach_with_sizelimit<P: AsRef<Path>>(&self,
+                                                 backing_file: P,
+                                                 offset: u64,
+                                                 sizelimit: u64)
+                                                 -> io::Result<()> {
         let bf = try!(OpenOptions::new().read(true).write(true).open(backing_file));
 
         // Attach the file
@@ -158,7 +158,7 @@ impl LoopDevice {
         // Set offset for backing_file
         let mut info: loop_info64 = Default::default();
         info.lo_offset = offset;
-        info.lo_sizelimit = size;
+        info.lo_sizelimit = sizelimit;
         unsafe {
             if ioctl(self.device.as_raw_fd() as c_int,
                      LOOP_SET_STATUS64.into(),
