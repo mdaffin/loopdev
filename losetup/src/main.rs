@@ -33,6 +33,11 @@ fn detach(matches: &clap::ArgMatches) -> io::Result<()> {
     LoopDevice::open(loopdev)?.detach()
 }
 
+fn set_capacity(matches: &clap::ArgMatches) -> io::Result<()> {
+    let loopdev = matches.value_of("file").unwrap();
+    LoopDevice::open(loopdev)?.set_capacity()
+}
+
 fn list(matches: Option<&clap::ArgMatches>) -> io::Result<()> {
     let (_free, _used) = match matches {
         Some(matches) => (matches.is_present("free"), matches.is_present("used")),
@@ -61,6 +66,10 @@ fn main() {
             (about: "detach the loop device from the backing file")
             (@arg file: +required "The file to detach")
         )
+        (@subcommand setcapacity =>
+            (about: "inform the loop driver of a change in size of the backing file")
+            (@arg file: +required "The file to set the capacity of")
+        )
         (@subcommand list =>
             (about: "list the available loop devices")
             (@arg free: -f --free "find free devices")
@@ -72,6 +81,7 @@ fn main() {
         ("find", _) => find(),
         ("attach", Some(matches)) => attach(matches),
         ("detach", Some(matches)) => detach(matches),
+        ("setcapacity", Some(matches)) => set_capacity(matches),
         (_, matches) => list(matches),
     };
 

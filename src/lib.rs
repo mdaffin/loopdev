@@ -27,9 +27,17 @@ use std::path::{Path, PathBuf};
 use libc::{c_int, ioctl, uint8_t, uint32_t, uint64_t};
 use std::default::Default;
 
+// TODO support missing operations
 const LOOP_SET_FD: u16 = 0x4C00;
 const LOOP_CLR_FD: u16 = 0x4C01;
 const LOOP_SET_STATUS64: u16 = 0x4C04;
+//const LOOP_GET_STATUS64: u16 = 0x4C05;
+const LOOP_SET_CAPACITY: u16 = 0x4C07;
+//const LOOP_SET_DIRECT_IO: u16 = 0x4C08;
+//const LOOP_SET_BLOCK_SIZE: u16 = 0x4C09;
+
+//const LOOP_CTL_ADD: u16 = 0x4C80;
+//const LOOP_CTL_REMOVE: u16 = 0x4C81;
 const LOOP_CTL_GET_FREE: u16 = 0x4C82;
 
 const LOOP_CONTROL: &'static str = "/dev/loop-control";
@@ -67,7 +75,9 @@ impl LoopControl {
         if result < 0 {
             Err(io::Error::last_os_error())
         } else {
-            Ok(try!(LoopDevice::open(&format!("{}{}", LOOP_PREFIX, result))))
+            Ok(try!(
+                LoopDevice::open(&format!("{}{}", LOOP_PREFIX, result))
+            ))
         }
     }
 }
@@ -120,10 +130,11 @@ impl LoopDevice {
     /// ld.attach_with_offset("test.img", 0).unwrap();
     /// # ld.detach().unwrap();
     /// ```
-    pub fn attach_with_offset<P: AsRef<Path>>(&self,
-                                              backing_file: P,
-                                              offset: u64)
-                                              -> io::Result<()> {
+    pub fn attach_with_offset<P: AsRef<Path>>(
+        &self,
+        backing_file: P,
+        offset: u64,
+    ) -> io::Result<()> {
         self.attach_with_sizelimit(backing_file, offset, 0)
     }
 
@@ -139,18 +150,22 @@ impl LoopDevice {
     /// ld.attach_with_sizelimit("test.img", 0, 1024).unwrap();
     /// # ld.detach().unwrap();
     /// ```
-    pub fn attach_with_sizelimit<P: AsRef<Path>>(&self,
-                                                 backing_file: P,
-                                                 offset: u64,
-                                                 sizelimit: u64)
-                                                 -> io::Result<()> {
+    pub fn attach_with_sizelimit<P: AsRef<Path>>(
+        &self,
+        backing_file: P,
+        offset: u64,
+        sizelimit: u64,
+    ) -> io::Result<()> {
         let bf = try!(OpenOptions::new().read(true).write(true).open(backing_file));
 
         // Attach the file
         unsafe {
-            if ioctl(self.device.as_raw_fd() as c_int,
-                     LOOP_SET_FD.into(),
-                     bf.as_raw_fd() as c_int) < 0 {
+            if ioctl(
+                self.device.as_raw_fd() as c_int,
+                LOOP_SET_FD.into(),
+                bf.as_raw_fd() as c_int,
+            ) < 0
+            {
                 return Err(io::Error::last_os_error());
             }
         }
@@ -160,9 +175,12 @@ impl LoopDevice {
         info.lo_offset = offset;
         info.lo_sizelimit = sizelimit;
         unsafe {
-            if ioctl(self.device.as_raw_fd() as c_int,
-                     LOOP_SET_STATUS64.into(),
-                     &mut info) < 0 {
+            if ioctl(
+                self.device.as_raw_fd() as c_int,
+                LOOP_SET_STATUS64.into(),
+                &mut info,
+            ) < 0
+            {
                 try!(self.detach());
                 return Err(io::Error::last_os_error());
             }
@@ -198,6 +216,25 @@ impl LoopDevice {
             if ioctl(self.device.as_raw_fd() as c_int, LOOP_CLR_FD.into(), 0) < 0 {
                 Err(io::Error::last_os_error())
             } else {
+                Ok(())
+            }
+        }
+    }
+
+    /// Resize a live loop device. If the size of the backing file changes this can be called to
+    /// inform the loop driver about the new size.
+    pub fn set_capacity(&self) -> io::Result<()> {
+        println!("running set_capacity");
+        unsafe {
+            if ioctl(
+                self.device.as_raw_fd() as c_int,
+                LOOP_SET_CAPACITY.into(),
+                0,
+            ) < 0
+            {
+                Err(io::Error::last_os_error())
+            } else {
+                println!("ok");
                 Ok(())
             }
         }
