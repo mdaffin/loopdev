@@ -40,8 +40,8 @@ const LOOP_SET_CAPACITY: u16 = 0x4C07;
 //const LOOP_CTL_REMOVE: u16 = 0x4C81;
 const LOOP_CTL_GET_FREE: u16 = 0x4C82;
 
-const LOOP_CONTROL: &'static str = "/dev/loop-control";
-const LOOP_PREFIX: &'static str = "/dev/loop";
+const LOOP_CONTROL: &str = "/dev/loop-control";
+const LOOP_PREFIX: &str = "/dev/loop";
 
 /// Interface to the loop control device: `/dev/loop-control`.
 #[derive(Debug)]
