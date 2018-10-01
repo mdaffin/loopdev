@@ -88,6 +88,12 @@ pub struct LoopDevice {
     device: File,
 }
 
+impl AsRawFd for LoopDevice {
+    fn as_raw_fd(&self) -> RawFd {
+        self.device.as_raw_fd()
+    }
+}
+
 impl LoopDevice {
     /// Opens a loop device.
     pub fn open<P: AsRef<Path>>(dev: P) -> io::Result<LoopDevice> {
