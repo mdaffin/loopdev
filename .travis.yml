@@ -41,7 +41,3 @@ deploy:
       tags: true
       condition: "$TRAVIS_RUST_VERSION = stable"
     script: ./.travis-deploy
-jobs:
-  include:
-    - script: cd losetup && cargo build --verbose
-      rust: stable
