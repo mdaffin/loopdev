@@ -3,37 +3,41 @@ language: rust
 addons:
   apt:
     packages:
-    - libcurl4-openssl-dev
-    - libelf-dev
-    - libdw-dev
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
 
 rust:
-- nightly
-- beta
-- stable
-- 1.20.0
-- 1.19.0
-- 1.18.0
-- 1.17.0
+  - nightly
+  - beta
+  - stable
+  - 1.20.0
+  - 1.19.0
+  - 1.18.0
+  - 1.17.0
 
 matrix:
   allow_failures:
-  - rust: nightly
+    - rust: nightly
 
 before_script:
-- fallocate -l 128M test.img
-- '[[ "$TRAVIS_RUST_VERSION" != "stable" ]] || rustup component add clippy-preview'
+  - fallocate -l 128M test.img
+  - '[[ "$TRAVIS_RUST_VERSION" != "stable" ]] || rustup component add clippy-preview'
 
 env:
   global:
-  - TRAVIS_CARGO_NIGHTLY_FEATURE=""
+    - TRAVIS_CARGO_NIGHTLY_FEATURE=""
+    - secure: pyi9BUvrSCekPRCo5hhbD2nPqgbj7UJun82TxxEBA9fGNR37LipjPL3/Rv70RCYwOurPzGDcjWyWOAAAkl4iKI3Zdr+JyAcNhpqY+qoPzx179ZoCF/zGxl8NqGtSL5OTXCo4L+HxzD6LxjPXOY2Qv7OmnalkJpLPzvew87lpO75t/b5fnJwT73NGMI0phf3rFEJ5oWAG6oHJTyTNdqrx5zTt3ekDR0Ra+fjnVs4WBuoSeCHSzpyvhwMjGmrh1YPxjEmOdetCzgJO4huWQXv56QMv41u3WT6aY4DamM0bVTaWR+spyWZ1KrCbTpqezP9Ds0ApiyKRQID7mT1KOwAOu4L6lKQJZfMbhlPhDwniDGQDjMMVEMPvheRFQIMieFJYSSFCr9CH2EMpDUmye288mWmZUfcoac4MvwOVFYAfkEEW7oQaB172tKI3RzM5MQUOLHdYKN4BFLT7SOWIRUPiJcMhbcZbfV+qVgpWSDCE6hguWXy9om4Du48mEM/2KI9nGxCJIKKcESLduTHslEW0pTs1DOuivj6o/iqmAoERGs4+IKdtvK8wBwOAMLjf23picoz1IGziazxHppDkm96dcdnw3qKzERmNEd/rrD4He4tyS66W5p6BEw2mFAlyvUBVn8G76ku2FXbmLBy1NlMJC5TCI+bLzwjnCjTOUklep/8=
 
-script: 
-- '[[ "$TRAVIS_RUST_VERSION" != "stable" ]] || cargo clippy -- -D warnings'
-- cargo build --verbose
-- sudo -E  env "PATH=$PATH" cargo test --verbose
+script:
+  - '[[ "$TRAVIS_RUST_VERSION" != "stable" ]] || cargo clippy -- -D warnings'
+  - cargo build --verbose
+  - sudo -E  env "PATH=$PATH" cargo test --verbose
 
-jobs:
-  include:
-  - script: cd losetup && cargo build --verbose
-    rust: stable
+deploy:
+  - provider: script
+    skip_cleanup: true
+    on:
+      tags: true
+      condition: "$TRAVIS_RUST_VERSION = stable"
+    script: ./.travis-deploy
