@@ -5,7 +5,7 @@
 
 Setup and control loop devices.
 
-Provides rust interface with similar functionalty to the linux utility `losetup`.
+Provides rust interface with similar functionality to the Linux utility `losetup`.
 
 ## [Documentation](https://docs.rs/loopdev)
 
@@ -27,12 +27,12 @@ ld.detach().unwrap();
 
 ### Running The Tests Locally
 
-Unfortinutly the tests require root only syscalls and thus must be run as root.
+Unfortunately the tests require root only syscalls and thus must be run as root.
 There is little point in mocking out these syscalls as I want to test they
 actually function as expected and if they were to be mocked out then the tests
 would not really be testing anything useful.
 
-A vagrant file is provided that can be used to create an environment to safly
+A vagrant file is provided that can be used to create an environment to safely
 run these tests locally as root. With [Vagrant] and [VirtualBox] installed you
 can do the following to run the tests.
 
@@ -44,8 +44,8 @@ cd /vagrant
 cargo test
 ```
 
-Note that the tests are built with root privllages, but since vagrant maps this
-directoy back to the host as your normal user there is minimal issues with
+Note that the tests are built with root privileges, but since vagrant maps this
+directory back to the host as your normal user there is minimal issues with
 this. At worst the vagrant box will become trashed and can be rebuilt in
 minutes.
 
