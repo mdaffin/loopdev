@@ -170,7 +170,6 @@ impl LoopDevice {
             .open(backing_file)?;
 
         // Attach the file
-
         if unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
@@ -183,15 +182,15 @@ impl LoopDevice {
         }
 
         // Set offset for backing_file
-        let mut info = loop_info64::default();
-        info.lo_offset = offset;
-        info.lo_sizelimit = sizelimit;
-
         if unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
                 LOOP_SET_STATUS64.into(),
-                &mut info,
+                &loop_info64 {
+                    lo_offset: offset,
+                    lo_sizelimit: sizelimit,
+                    ..Default::default()
+                },
             )
         } < 0
         {
