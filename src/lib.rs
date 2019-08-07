@@ -53,7 +53,10 @@ impl LoopControl {
     /// Opens the loop control device.
     pub fn open() -> io::Result<Self> {
         Ok(Self {
-            dev_file: try!(OpenOptions::new().read(true).write(true).open(LOOP_CONTROL)),
+            dev_file: OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(LOOP_CONTROL)?,
         })
     }
 
@@ -75,10 +78,7 @@ impl LoopControl {
         if result < 0 {
             Err(io::Error::last_os_error())
         } else {
-            Ok(try!(LoopDevice::open(&format!(
-                "{}{}",
-                LOOP_PREFIX, result
-            ))))
+            LoopDevice::open(&format!("{}{}", LOOP_PREFIX, result))
         }
     }
 }
@@ -99,7 +99,7 @@ impl LoopDevice {
     /// Opens a loop device.
     pub fn open<P: AsRef<Path>>(dev: P) -> io::Result<Self> {
         // TODO create dev if it does not exist and begins with LOOP_PREFIX
-        let f = try!(OpenOptions::new().read(true).write(true).open(dev));
+        let f = OpenOptions::new().read(true).write(true).open(dev)?;
         Ok(Self { device: f })
     }
 
@@ -166,7 +166,10 @@ impl LoopDevice {
         offset: u64,
         sizelimit: u64,
     ) -> io::Result<()> {
-        let bf = try!(OpenOptions::new().read(true).write(true).open(backing_file));
+        let bf = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(backing_file)?;
 
         // Attach the file
         unsafe {
@@ -191,7 +194,7 @@ impl LoopDevice {
                 &mut info,
             ) < 0
             {
-                try!(self.detach());
+                self.detach()?;
                 return Err(io::Error::last_os_error());
             }
         }
