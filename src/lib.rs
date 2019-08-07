@@ -18,14 +18,14 @@
 
 extern crate libc;
 
-use std::fs::OpenOptions;
 use std::fs::File;
+use std::fs::OpenOptions;
 
-use std::os::unix::prelude::*;
-use std::io;
-use std::path::{Path, PathBuf};
-use libc::{c_int, ioctl, uint8_t, uint32_t, uint64_t};
+use libc::{c_int, ioctl};
 use std::default::Default;
+use std::io;
+use std::os::unix::prelude::*;
+use std::path::{Path, PathBuf};
 
 // TODO support missing operations
 const LOOP_SET_FD: u16 = 0x4C00;
@@ -51,8 +51,8 @@ pub struct LoopControl {
 
 impl LoopControl {
     /// Opens the loop control device.
-    pub fn open() -> io::Result<LoopControl> {
-        Ok(LoopControl {
+    pub fn open() -> io::Result<Self> {
+        Ok(Self {
             dev_file: try!(OpenOptions::new().read(true).write(true).open(LOOP_CONTROL)),
         })
     }
@@ -75,9 +75,10 @@ impl LoopControl {
         if result < 0 {
             Err(io::Error::last_os_error())
         } else {
-            Ok(try!(
-                LoopDevice::open(&format!("{}{}", LOOP_PREFIX, result))
-            ))
+            Ok(try!(LoopDevice::open(&format!(
+                "{}{}",
+                LOOP_PREFIX, result
+            ))))
         }
     }
 }
@@ -96,14 +97,17 @@ impl AsRawFd for LoopDevice {
 
 impl LoopDevice {
     /// Opens a loop device.
-    pub fn open<P: AsRef<Path>>(dev: P) -> io::Result<LoopDevice> {
+    pub fn open<P: AsRef<Path>>(dev: P) -> io::Result<Self> {
         // TODO create dev if it does not exist and begins with LOOP_PREFIX
         let f = try!(OpenOptions::new().read(true).write(true).open(dev));
-        Ok(LoopDevice { device: f })
+        Ok(Self { device: f })
     }
 
     /// Attach the loop device to a file starting at offset into the file.
-    #[deprecated(since = "0.2.0", note = "use `attach_file` or `attach_with_offset` instead")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "use `attach_file` or `attach_with_offset` instead"
+    )]
     pub fn attach<P: AsRef<Path>>(&self, backing_file: P, offset: u64) -> io::Result<()> {
         self.attach_with_sizelimit(backing_file, offset, 0)
     }
@@ -177,7 +181,7 @@ impl LoopDevice {
         }
 
         // Set offset for backing_file
-        let mut info: loop_info64 = Default::default();
+        let mut info = loop_info64::default();
         info.lo_offset = offset;
         info.lo_sizelimit = sizelimit;
         unsafe {
@@ -249,24 +253,24 @@ impl LoopDevice {
 
 #[repr(C)]
 struct loop_info64 {
-    pub lo_device: uint64_t,
-    pub lo_inode: uint64_t,
-    pub lo_rdevice: uint64_t,
-    pub lo_offset: uint64_t,
-    pub lo_sizelimit: uint64_t,
-    pub lo_number: uint32_t,
-    pub lo_encrypt_type: uint32_t,
-    pub lo_encrypt_key_size: uint32_t,
-    pub lo_flags: uint32_t,
-    pub lo_file_name: [uint8_t; 64],
-    pub lo_crypt_name: [uint8_t; 64],
-    pub lo_encrypt_key: [uint8_t; 32],
-    pub lo_init: [uint64_t; 2],
+    pub lo_device: u64,
+    pub lo_inode: u64,
+    pub lo_rdevice: u64,
+    pub lo_offset: u64,
+    pub lo_sizelimit: u64,
+    pub lo_number: u32,
+    pub lo_encrypt_type: u32,
+    pub lo_encrypt_key_size: u32,
+    pub lo_flags: u32,
+    pub lo_file_name: [u8; 64],
+    pub lo_crypt_name: [u8; 64],
+    pub lo_encrypt_key: [u8; 32],
+    pub lo_init: [u64; 2],
 }
 
 impl Default for loop_info64 {
-    fn default() -> loop_info64 {
-        loop_info64 {
+    fn default() -> Self {
+        Self {
             lo_device: 0,
             lo_inode: 0,
             lo_rdevice: 0,
