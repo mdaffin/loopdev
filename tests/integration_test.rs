@@ -6,25 +6,11 @@ extern crate lazy_static;
 extern crate serde;
 extern crate serde_json;
 
-use libc::fallocate;
-use serde::{Deserialize, Deserializer};
-use std::fmt::Display;
-use std::io;
-use std::os::unix::io::AsRawFd;
+use loopdev::{LoopControl, LoopDevice};
 use std::path::PathBuf;
-use std::process::Command;
-use std::str::FromStr;
-use std::sync::{Arc, Mutex, MutexGuard};
 
-use tempfile::{NamedTempFile, TempPath};
-
-use loopdev::LoopControl;
-
-// All tests use the same loopback device interface and so can tread on each others toes leading to
-// racy tests. So we need to lock all tests to ensure only one runs at a time.
-lazy_static! {
-    static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
-}
+mod util;
+use util::{attach_file, create_backing_file, detach_all, list_device, setup};
 
 #[test]
 fn get_next_free_device() {
@@ -106,90 +92,84 @@ fn attach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
         "the attached devices name should match the input name"
     );
     assert_eq!(
-        devices[0].back_file.as_str(),
+        devices[0].back_file.clone().unwrap().as_str(),
         file_path.to_str().unwrap(),
         "the backing file should match the given file"
     );
     assert_eq!(
-        devices[0].offset, offset,
+        devices[0].offset,
+        Some(offset),
         "the offset should match the requested offset"
     );
     assert_eq!(
-        devices[0].size_limit, sizelimit,
+        devices[0].size_limit,
+        Some(sizelimit),
         "the sizelimit should match the requested sizelimit"
     );
 
     detach_all();
 }
 
-fn create_backing_file(size: i64) -> TempPath {
-    let file = NamedTempFile::new().expect("should be able to create a temp file");
-    if unsafe { fallocate(file.as_raw_fd(), 0, 0, size) } < 0 {
-        panic!(
-            "should be able to allocate the tenp file: {}",
-            io::Error::last_os_error()
-        );
-    }
-    file.into_temp_path()
+#[test]
+fn detach_a_backing_file_default() {
+    detach_a_backing_file(0, 0, 128 * 1024 * 1024);
 }
 
-fn setup() -> MutexGuard<'static, ()> {
-    let lock = LOCK.lock().unwrap();
-    detach_all();
-    lock
+#[test]
+fn detach_a_backing_file_with_offset() {
+    detach_a_backing_file(128 * 1024, 0, 128 * 1024 * 1024);
 }
 
-fn detach_all() {
-    std::thread::sleep(std::time::Duration::from_millis(10));
-    if !Command::new("losetup")
-        .args(&["-D"])
-        .status()
-        .expect("failed to cleanup existing loop devices")
-        .success()
+#[test]
+fn detach_a_backing_file_with_sizelimit() {
+    detach_a_backing_file(0, 128 * 1024, 128 * 1024 * 1024);
+}
+
+#[test]
+fn detach_a_backing_file_with_offset_sizelimit() {
+    detach_a_backing_file(128 * 1024, 128 * 1024, 128 * 1024 * 1024);
+}
+
+// This is also allowed by losetup, not sure what happens if you try to write to the file though.
+#[test]
+fn detach_a_backing_file_with_offset_overflow() {
+    detach_a_backing_file(128 * 1024 * 1024 * 2, 0, 128 * 1024 * 1024);
+}
+
+// This is also allowed by losetup, not sure what happens if you try to write to the file though.
+#[test]
+fn detach_a_backing_file_with_sizelimit_overflow() {
+    detach_a_backing_file(0, 128 * 1024 * 1024 * 2, 128 * 1024 * 1024);
+}
+
+fn detach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
+    let _lock = setup();
+
     {
-        panic!("failed to cleanup existing loop devices")
-    }
-    std::thread::sleep(std::time::Duration::from_millis(10));
-}
+        let file = create_backing_file(file_size);
+        attach_file(
+            "/dev/loop0",
+            file.to_path_buf().to_str().unwrap(),
+            offset,
+            sizelimit,
+        );
 
-fn list_device(dev_file: Option<&str>) -> Vec<LoopDeviceOutput> {
-    let mut output = Command::new("losetup");
-    output.args(&["-J", "-l"]);
-    if let Some(dev_file) = dev_file {
-        output.arg(dev_file);
-    }
-    let output = output
-        .output()
-        .expect("failed to cleanup existing loop devices");
-    serde_json::from_slice::<ListOutput>(&output.stdout)
-        .unwrap()
-        .loopdevices
-}
+        let ld0 = LoopDevice::open("/dev/loop0")
+            .expect("should be able to open the created loopback device");
 
-#[derive(Deserialize, Debug)]
-struct LoopDeviceOutput {
-    pub name: String,
-    #[serde(rename = "sizelimit")]
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub size_limit: u64,
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub offset: u64,
-    #[serde(rename = "back-file")]
-    pub back_file: String,
-}
+        ld0.detach()
+            .expect("should not error detaching the backing file from the loopdev");
 
-#[derive(Deserialize, Debug)]
-struct ListOutput {
-    pub loopdevices: Vec<LoopDeviceOutput>,
-}
+        file.close().expect("should delete the temp backing file");
+    };
 
-pub fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-where
-    D: Deserializer<'de>,
-    T: FromStr + serde::Deserialize<'de>,
-    <T as FromStr>::Err: Display,
-{
-    String::deserialize(deserializer)?
-        .parse::<T>()
-        .map_err(serde::de::Error::custom)
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    let devices = list_device(None);
+
+    assert_eq!(
+        devices.len(),
+        0,
+        "there should be no loopback devices mounted"
+    );
+    detach_all();
 }
