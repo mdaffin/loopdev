@@ -71,12 +71,10 @@ impl LoopControl {
     /// println!("{}", ld.path().unwrap().display());
     /// ```
     pub fn next_free(&self) -> io::Result<LoopDevice> {
-        let result = unsafe { ioctl(self.dev_file.as_raw_fd() as c_int, LOOP_CTL_GET_FREE.into()) };
-        if result < 0 {
-            Err(io::Error::last_os_error())
-        } else {
-            LoopDevice::open(&format!("{}{}", LOOP_PREFIX, result))
-        }
+        let dev_num = ioctl_to_error(unsafe {
+            ioctl(self.dev_file.as_raw_fd() as c_int, LOOP_CTL_GET_FREE.into())
+        })?;
+        LoopDevice::open(&format!("{}{}", LOOP_PREFIX, dev_num))
     }
 }
 
@@ -170,33 +168,29 @@ impl LoopDevice {
             .open(backing_file)?;
 
         // Attach the file
-
-        if unsafe {
+        ioctl_to_error(unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
                 LOOP_SET_FD.into(),
                 bf.as_raw_fd() as c_int,
             )
-        } < 0
-        {
-            return Err(io::Error::last_os_error());
-        }
+        })?;
 
         // Set offset for backing_file
         let mut info = loop_info64::default();
         info.lo_offset = offset;
         info.lo_sizelimit = sizelimit;
 
-        if unsafe {
+        if let Err(err) = ioctl_to_error(unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
                 LOOP_SET_STATUS64.into(),
                 &mut info,
             )
-        } < 0
-        {
-            self.detach()?;
-            return Err(io::Error::last_os_error());
+        }) {
+            // Ignore the error to preserve the original error
+            let _ = self.detach();
+            return Err(err);
         }
         Ok(())
     }
@@ -225,31 +219,21 @@ impl LoopDevice {
     /// ld.detach().unwrap();
     /// ```
     pub fn detach(&self) -> io::Result<()> {
-        if unsafe { ioctl(self.device.as_raw_fd() as c_int, LOOP_CLR_FD.into(), 0) } < 0 {
-            Err(io::Error::last_os_error())
-        } else {
-            Ok(())
-        }
+        ioctl_to_error(unsafe { ioctl(self.device.as_raw_fd() as c_int, LOOP_CLR_FD.into(), 0) })?;
+        Ok(())
     }
 
     /// Resize a live loop device. If the size of the backing file changes this can be called to
     /// inform the loop driver about the new size.
     pub fn set_capacity(&self) -> io::Result<()> {
-        println!("running set_capacity");
-
-        if unsafe {
+        ioctl_to_error(unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
                 LOOP_SET_CAPACITY.into(),
                 0,
             )
-        } < 0
-        {
-            Err(io::Error::last_os_error())
-        } else {
-            println!("ok");
-            Ok(())
-        }
+        })?;
+        Ok(())
     }
 }
 
@@ -287,5 +271,13 @@ impl Default for loop_info64 {
             lo_encrypt_key: [0; 32],
             lo_init: [0; 2],
         }
+    }
+}
+
+fn ioctl_to_error(ret: i32) -> io::Result<i32> {
+    if ret < 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(ret)
     }
 }
