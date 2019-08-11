@@ -210,6 +210,10 @@ impl LoopDevice {
 
     /// Detach a loop device from its backing file.
     ///
+    /// Note that the device won't fully detach until a short delay after the underling device file
+    /// gets closed. This happens when LoopDev goes out of scope so you should ensure the LoopDev
+    /// lives for a short a time as possible.
+    ///
     /// # Examples
     ///
     /// ```rust
