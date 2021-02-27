@@ -162,6 +162,54 @@ impl LoopDevice {
         offset: u64,
         sizelimit: u64,
     ) -> io::Result<()> {
+        // Set offset for backing_file
+        let mut info = loop_info64::default();
+        info.lo_offset = offset;
+        info.lo_sizelimit = sizelimit;
+
+        Self::attach_with_loop_info(self, backing_file, &mut info)
+    }
+
+    /// Attach the loop device with automatic partition scanning.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use loopdev::LoopDevice;
+    /// let ld = LoopDevice::open("/dev/loop5").unwrap();
+    /// ld.attach_with_partscan("test.img").unwrap();
+    /// # ld.detach().unwrap();
+    /// ```
+    pub fn attach_with_partscan<P: AsRef<Path>>(
+        &self,
+        backing_file: P,
+    ) -> io::Result<()> {
+        // Set lo_flags to LO_FLAGS_PARTSCAN value
+        let mut info = loop_info64::default();
+        info.lo_flags = 8;
+
+        Self::attach_with_loop_info(self, backing_file, &mut info)
+    }
+
+
+
+    /// Attach the loop device to a file with loop_info.
+    ///
+    /// # Examples
+    ///
+    /// Attach the device with default loop_info values.
+    ///
+    /// ```rust
+    /// use loopdev::LoopDevice;
+    /// let ld = LoopDevice::open("/dev/loop5").unwrap();
+    /// ld.attach_with_loop_info("test.img", loop_info64::default()).unwrap();
+    /// # ld.detach().unwrap();
+    /// ```
+    pub fn attach_with_loop_info<P: AsRef<Path>>(
+        &self,
+        backing_file: P,
+        loop_info: &mut loop_info64,
+    ) -> io::Result<()> {
         let bf = OpenOptions::new()
             .read(true)
             .write(true)
@@ -176,16 +224,11 @@ impl LoopDevice {
             )
         })?;
 
-        // Set offset for backing_file
-        let mut info = loop_info64::default();
-        info.lo_offset = offset;
-        info.lo_sizelimit = sizelimit;
-
         if let Err(err) = ioctl_to_error(unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
                 LOOP_SET_STATUS64.into(),
-                &mut info,
+                loop_info,
             )
         }) {
             // Ignore the error to preserve the original error
@@ -242,7 +285,7 @@ impl LoopDevice {
 }
 
 #[repr(C)]
-struct loop_info64 {
+pub struct loop_info64 {
     pub lo_device: u64,
     pub lo_inode: u64,
     pub lo_rdevice: u64,
