@@ -167,7 +167,7 @@ impl LoopDevice {
         info.lo_offset = offset;
         info.lo_sizelimit = sizelimit;
 
-        Self::attach_with_loop_info(self, backing_file, &mut info)
+        Self::attach_with_loop_info(self, backing_file, info)
     }
 
     /// Attach the loop device with automatic partition scanning.
@@ -180,18 +180,13 @@ impl LoopDevice {
     /// ld.attach_with_partscan("test.img").unwrap();
     /// # ld.detach().unwrap();
     /// ```
-    pub fn attach_with_partscan<P: AsRef<Path>>(
-        &self,
-        backing_file: P,
-    ) -> io::Result<()> {
+    pub fn attach_with_partscan<P: AsRef<Path>>(&self, backing_file: P) -> io::Result<()> {
         // Set lo_flags to LO_FLAGS_PARTSCAN value
         let mut info = loop_info64::default();
         info.lo_flags = 8;
 
-        Self::attach_with_loop_info(self, backing_file, &mut info)
+        Self::attach_with_loop_info(self, backing_file, info)
     }
-
-
 
     /// Attach the loop device to a file with loop_info.
     ///
@@ -200,7 +195,7 @@ impl LoopDevice {
     /// Attach the device with default loop_info values.
     ///
     /// ```rust
-    /// use loopdev::LoopDevice;
+    /// use loopdev::{LoopDevice, loop_info64};
     /// let ld = LoopDevice::open("/dev/loop5").unwrap();
     /// ld.attach_with_loop_info("test.img", loop_info64::default()).unwrap();
     /// # ld.detach().unwrap();
@@ -208,7 +203,7 @@ impl LoopDevice {
     pub fn attach_with_loop_info<P: AsRef<Path>>(
         &self,
         backing_file: P,
-        loop_info: &mut loop_info64,
+        loop_info: loop_info64,
     ) -> io::Result<()> {
         let bf = OpenOptions::new()
             .read(true)
@@ -228,7 +223,7 @@ impl LoopDevice {
             ioctl(
                 self.device.as_raw_fd() as c_int,
                 LOOP_SET_STATUS64.into(),
-                loop_info,
+                &loop_info,
             )
         }) {
             // Ignore the error to preserve the original error
