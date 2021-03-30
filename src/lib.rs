@@ -163,7 +163,7 @@ impl LoopDevice {
         sizelimit: u64,
     ) -> io::Result<()> {
         // Set offset for backing_file
-        let mut info = loop_info64::default();
+        let mut info = LoopInfo64::default();
         info.lo_offset = offset;
         info.lo_sizelimit = sizelimit;
 
@@ -182,7 +182,7 @@ impl LoopDevice {
     /// ```
     pub fn attach_with_partscan<P: AsRef<Path>>(&self, backing_file: P) -> io::Result<()> {
         // Set lo_flags to LO_FLAGS_PARTSCAN value
-        let mut info = loop_info64::default();
+        let mut info = LoopInfo64::default();
         info.lo_flags = 8;
 
         Self::attach_with_loop_info(self, backing_file, info)
@@ -192,7 +192,7 @@ impl LoopDevice {
     fn attach_with_loop_info<P: AsRef<Path>>(
         &self,
         backing_file: P,
-        loop_info: loop_info64,
+        loop_info: LoopInfo64,
     ) -> io::Result<()> {
         let bf = OpenOptions::new()
             .read(true)
@@ -268,24 +268,25 @@ impl LoopDevice {
     }
 }
 
+// https://man7.org/linux/man-pages/man4/loop.4.html
 #[repr(C)]
-struct loop_info64 {
-    pub lo_device: u64,
-    pub lo_inode: u64,
-    pub lo_rdevice: u64,
-    pub lo_offset: u64,
-    pub lo_sizelimit: u64,
-    pub lo_number: u32,
-    pub lo_encrypt_type: u32,
-    pub lo_encrypt_key_size: u32,
-    pub lo_flags: u32,
-    pub lo_file_name: [u8; 64],
-    pub lo_crypt_name: [u8; 64],
-    pub lo_encrypt_key: [u8; 32],
-    pub lo_init: [u64; 2],
+struct LoopInfo64 {
+    pub lo_device: u64,           // ioctl r/o
+    pub lo_inode: u64,            // ioctl r/o
+    pub lo_rdevice: u64,          // ioctl r/o
+    pub lo_offset: u64,           //
+    pub lo_sizelimit: u64,        // bytes, 0 == max available
+    pub lo_number: u32,           // ioctl r/o
+    pub lo_encrypt_type: u32,     //
+    pub lo_encrypt_key_size: u32, // ioctl w/o
+    pub lo_flags: u32,            // ioctl r/w (r/o before Linux 2.6.25)
+    pub lo_file_name: [u8; 64],   //
+    pub lo_crypt_name: [u8; 64],  //
+    pub lo_encrypt_key: [u8; 32], // ioctl w/o
+    pub lo_init: [u64; 2],        //
 }
 
-impl Default for loop_info64 {
+impl Default for LoopInfo64 {
     fn default() -> Self {
         Self {
             lo_device: 0,
