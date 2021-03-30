@@ -99,13 +99,37 @@ impl LoopDevice {
         })
     }
 
+    /// Attach the loop device to a file with given options.
+    ///
+    /// # Examples
+    ///
+    /// Attach the device to a file.
+    ///
+    /// ```rust
+    /// use loopdev::LoopDevice;
+    /// let mut ld = LoopDevice::open("/dev/loop4").unwrap();
+    /// ld.with().part_scan(true).attach("test.img").unwrap();
+    /// # ld.detach().unwrap();
+    /// ```
+    pub fn with(&mut self) -> AttachOptions<'_> {
+        AttachOptions {
+            device: self,
+            info: Default::default(),
+        }
+    }
+
     /// Attach the loop device to a file starting at offset into the file.
     #[deprecated(
         since = "0.2.0",
-        note = "use `attach_file` or `attach_with_offset` instead"
+        note = "use `loop.with().offset(offset).attach(file)` instead"
     )]
     pub fn attach<P: AsRef<Path>>(&self, backing_file: P, offset: u64) -> io::Result<()> {
-        self.attach_with_sizelimit(backing_file, offset, 0)
+        let info = LoopInfo64 {
+            lo_offset: offset,
+            ..Default::default()
+        };
+
+        Self::attach_with_loop_info(self, backing_file, info)
     }
 
     /// Attach the loop device to a file that maps to the whole file.
@@ -121,78 +145,70 @@ impl LoopDevice {
     /// # ld.detach().unwrap();
     /// ```
     pub fn attach_file<P: AsRef<Path>>(&self, backing_file: P) -> io::Result<()> {
-        self.attach_with_sizelimit(backing_file, 0, 0)
+        let info = LoopInfo64 {
+            ..Default::default()
+        };
+
+        Self::attach_with_loop_info(self, backing_file, info)
     }
 
     /// Attach the loop device to a file starting at offset into the file.
-    ///
-    /// # Examples
-    ///
-    /// Attach the device to the start of a file.
-    ///
-    /// ```rust
-    /// use loopdev::LoopDevice;
-    /// let ld = LoopDevice::open("/dev/loop5").unwrap();
-    /// ld.attach_with_offset("test.img", 0).unwrap();
-    /// # ld.detach().unwrap();
-    /// ```
+    #[deprecated(
+        since = "0.2.2",
+        note = "use `loop.with().offset(offset).attach(file)` instead"
+    )]
     pub fn attach_with_offset<P: AsRef<Path>>(
         &self,
         backing_file: P,
         offset: u64,
     ) -> io::Result<()> {
-        self.attach_with_sizelimit(backing_file, offset, 0)
+        let info = LoopInfo64 {
+            lo_offset: offset,
+            ..Default::default()
+        };
+
+        Self::attach_with_loop_info(self, backing_file, info)
     }
 
     /// Attach the loop device to a file starting at offset into the file and a the given sizelimit.
-    ///
-    /// # Examples
-    ///
-    /// Attach the device to the start of a file with a maximum size of 1024 bytes.
-    ///
-    /// ```rust
-    /// use loopdev::LoopDevice;
-    /// let ld = LoopDevice::open("/dev/loop6").unwrap();
-    /// ld.attach_with_sizelimit("test.img", 0, 1024).unwrap();
-    /// # ld.detach().unwrap();
-    /// ```
+    #[deprecated(
+        since = "0.2.2",
+        note = "use `with().size_limit(size).attach(file)` instead"
+    )]
     pub fn attach_with_sizelimit<P: AsRef<Path>>(
         &self,
         backing_file: P,
         offset: u64,
-        sizelimit: u64,
+        size_limit: u64,
     ) -> io::Result<()> {
-        // Set offset for backing_file
-        let mut info = LoopInfo64::default();
-        info.lo_offset = offset;
-        info.lo_sizelimit = sizelimit;
+        let info = LoopInfo64 {
+            lo_offset: offset,
+            lo_sizelimit: size_limit,
+            ..Default::default()
+        };
 
         Self::attach_with_loop_info(self, backing_file, info)
     }
 
     /// Attach the loop device with automatic partition scanning.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use loopdev::LoopDevice;
-    /// let ld = LoopDevice::open("/dev/loop5").unwrap();
-    /// ld.attach_with_partscan("test.img").unwrap();
-    /// # ld.detach().unwrap();
-    /// ```
+    #[deprecated(
+        since = "0.2.2",
+        note = "use `with().part_scan(true).attach(file)` instead"
+    )]
     pub fn attach_with_partscan<P: AsRef<Path>>(&self, backing_file: P) -> io::Result<()> {
-        // Set lo_flags to LO_FLAGS_PARTSCAN value
-        let mut info = LoopInfo64::default();
-        info.lo_flags = 8;
+        let info = LoopInfo64 {
+            lo_flags: 8,
+            ..Default::default()
+        };
 
         Self::attach_with_loop_info(self, backing_file, info)
     }
 
     /// Attach the loop device to a file with loop_info.
-    fn attach_with_loop_info<P: AsRef<Path>>(
-        &self,
-        backing_file: P,
-        loop_info: LoopInfo64,
+    fn attach_with_loop_info(
+        &self, // TODO should be mut? - but changing it is a breaking change
+        backing_file: impl AsRef<Path>,
+        info: LoopInfo64,
     ) -> io::Result<()> {
         let bf = OpenOptions::new()
             .read(true)
@@ -212,7 +228,7 @@ impl LoopDevice {
             ioctl(
                 self.device.as_raw_fd() as c_int,
                 LOOP_SET_STATUS64.into(),
-                &loop_info,
+                &info,
             )
         }) {
             // Ignore the error to preserve the original error
@@ -265,6 +281,41 @@ impl LoopDevice {
             )
         })?;
         Ok(())
+    }
+}
+
+pub struct AttachOptions<'d> {
+    device: &'d mut LoopDevice,
+    info: LoopInfo64,
+}
+
+impl AttachOptions<'_> {
+    /// Offset in bytes from the start of the backing file the data will start at.
+    pub fn offset(mut self, offset: u64) -> Self {
+        self.info.lo_offset = offset;
+        self
+    }
+
+    /// Maximum size of the data in bytes.
+    pub fn size_limit(mut self, size_limit: u64) -> Self {
+        self.info.lo_sizelimit = size_limit;
+        self
+    }
+
+    /// Force the kernel to scan the partition table on a newly created loop device. Note that the
+    /// partition table parsing depends on sector sizes. The default is sector size is 512 bytes
+    pub fn part_scan(mut self, enable: bool) -> Self {
+        if enable {
+            self.info.lo_flags |= 1 << 4;
+        } else {
+            self.info.lo_flags &= u32::max_value() - (1 << 4);
+        }
+        self
+    }
+
+    /// Attach the loop device to a file with the set options.
+    pub fn attach(self, backing_file: impl AsRef<Path>) -> io::Result<()> {
+        self.device.attach_with_loop_info(backing_file, self.info)
     }
 }
 

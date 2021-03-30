@@ -68,11 +68,14 @@ fn attach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
 
         let file = create_backing_file(file_size);
         let file_path = file.to_path_buf();
-        let ld0 = lc
+        let mut ld0 = lc
             .next_free()
             .expect("should not error finding the next free loopback device");
 
-        ld0.attach_with_sizelimit(&file, offset, sizelimit)
+        ld0.with()
+            .offset(offset)
+            .size_limit(sizelimit)
+            .attach(&file)
             .expect("should not error attaching the backing file to the loopdev");
 
         let devices = list_device(Some(ld0.path().unwrap().to_str().unwrap()));

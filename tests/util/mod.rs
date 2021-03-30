@@ -71,7 +71,7 @@ pub fn list_device(dev_file: Option<&str>) -> Vec<LoopDeviceOutput> {
         .output()
         .expect("failed to cleanup existing loop devices");
 
-    if output.stdout.len() == 0 {
+    if output.stdout.is_empty() {
         Vec::new()
     } else {
         serde_json::from_slice::<ListOutput>(&output.stdout)
