@@ -189,18 +189,7 @@ impl LoopDevice {
     }
 
     /// Attach the loop device to a file with loop_info.
-    ///
-    /// # Examples
-    ///
-    /// Attach the device with default loop_info values.
-    ///
-    /// ```rust
-    /// use loopdev::{LoopDevice, loop_info64};
-    /// let ld = LoopDevice::open("/dev/loop5").unwrap();
-    /// ld.attach_with_loop_info("test.img", loop_info64::default()).unwrap();
-    /// # ld.detach().unwrap();
-    /// ```
-    pub fn attach_with_loop_info<P: AsRef<Path>>(
+    fn attach_with_loop_info<P: AsRef<Path>>(
         &self,
         backing_file: P,
         loop_info: loop_info64,
@@ -280,7 +269,7 @@ impl LoopDevice {
 }
 
 #[repr(C)]
-pub struct loop_info64 {
+struct loop_info64 {
     pub lo_device: u64,
     pub lo_inode: u64,
     pub lo_rdevice: u64,
