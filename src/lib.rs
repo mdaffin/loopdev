@@ -190,20 +190,6 @@ impl LoopDevice {
         Self::attach_with_loop_info(self, backing_file, info)
     }
 
-    /// Attach the loop device with automatic partition scanning.
-    #[deprecated(
-        since = "0.2.2",
-        note = "use `with().part_scan(true).attach(file)` instead"
-    )]
-    pub fn attach_with_partscan<P: AsRef<Path>>(&self, backing_file: P) -> io::Result<()> {
-        let info = LoopInfo64 {
-            lo_flags: 8,
-            ..Default::default()
-        };
-
-        Self::attach_with_loop_info(self, backing_file, info)
-    }
-
     /// Attach the loop device to a file with loop_info.
     fn attach_with_loop_info(
         &self, // TODO should be mut? - but changing it is a breaking change
