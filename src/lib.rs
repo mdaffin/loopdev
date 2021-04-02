@@ -270,6 +270,7 @@ impl LoopDevice {
     }
 }
 
+/// Used to set options when attaching a device. Created with [LoopDevice::with()].
 pub struct AttachOptions<'d> {
     device: &'d mut LoopDevice,
     info: LoopInfo64,
