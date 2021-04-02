@@ -247,7 +247,7 @@ impl LoopDevice {
     ///
     /// ```rust
     /// use loopdev::LoopDevice;
-    /// let ld = LoopDevice::open("/dev/loop7").unwrap();
+    /// let ld = LoopDevice::open("/dev/loop4").unwrap();
     /// # ld.attach_file("test.img").unwrap();
     /// ld.detach().unwrap();
     /// ```
@@ -271,6 +271,33 @@ impl LoopDevice {
 }
 
 /// Used to set options when attaching a device. Created with [LoopDevice::with()].
+///
+/// # Examples
+///
+/// Enable partition scanning on attach:
+///
+/// ```rust
+/// use loopdev::LoopDevice;
+/// let mut ld = LoopDevice::open("/dev/loop4").unwrap();
+/// ld.with()
+///     .part_scan(true)
+///     .attach("test.img")
+///     .unwrap();
+/// # ld.detach().unwrap();
+/// ```
+///
+/// A 1MiB slice of the file located at 1KiB into the file.
+///
+/// ```rust
+/// use loopdev::LoopDevice;
+/// let mut ld = LoopDevice::open("/dev/loop4").unwrap();
+/// ld.with()
+///     .offset(1024*1024)
+///     .size_limit(1024*1024*1024)
+///     .attach("test.img")
+///     .unwrap();
+/// # ld.detach().unwrap();
+/// ```
 pub struct AttachOptions<'d> {
     device: &'d mut LoopDevice,
     info: LoopInfo64,
