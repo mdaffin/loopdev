@@ -107,7 +107,7 @@ impl LoopDevice {
     ///
     /// ```rust
     /// use loopdev::LoopDevice;
-    /// let mut ld = LoopDevice::open("/dev/loop4").unwrap();
+    /// let mut ld = LoopDevice::open("/dev/loop3").unwrap();
     /// ld.with().part_scan(true).attach("test.img").unwrap();
     /// # ld.detach().unwrap();
     /// ```
@@ -247,7 +247,7 @@ impl LoopDevice {
     ///
     /// ```rust
     /// use loopdev::LoopDevice;
-    /// let ld = LoopDevice::open("/dev/loop4").unwrap();
+    /// let ld = LoopDevice::open("/dev/loop5").unwrap();
     /// # ld.attach_file("test.img").unwrap();
     /// ld.detach().unwrap();
     /// ```
@@ -278,7 +278,7 @@ impl LoopDevice {
 ///
 /// ```rust
 /// use loopdev::LoopDevice;
-/// let mut ld = LoopDevice::open("/dev/loop4").unwrap();
+/// let mut ld = LoopDevice::open("/dev/loop6").unwrap();
 /// ld.with()
 ///     .part_scan(true)
 ///     .attach("test.img")
@@ -290,7 +290,7 @@ impl LoopDevice {
 ///
 /// ```rust
 /// use loopdev::LoopDevice;
-/// let mut ld = LoopDevice::open("/dev/loop4").unwrap();
+/// let mut ld = LoopDevice::open("/dev/loop7").unwrap();
 /// ld.with()
 ///     .offset(1024*1024)
 ///     .size_limit(1024*1024*1024)
