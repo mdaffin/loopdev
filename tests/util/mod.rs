@@ -1,9 +1,11 @@
 use libc::fallocate;
 use serde::{Deserialize, Deserializer};
-use std::io;
-use std::os::unix::io::AsRawFd;
-use std::process::Command;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::{
+    io,
+    os::unix::io::AsRawFd,
+    process::Command,
+    sync::{Arc, Mutex, MutexGuard},
+};
 
 use tempfile::{NamedTempFile, TempPath};
 
