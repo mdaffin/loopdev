@@ -86,6 +86,18 @@ impl LoopControl {
     }
 }
 
+impl AsRawFd for LoopControl {
+    fn as_raw_fd(&self) -> RawFd {
+        self.dev_file.as_raw_fd()
+    }
+}
+
+impl IntoRawFd for LoopControl {
+    fn into_raw_fd(self) -> RawFd {
+        self.dev_file.into_raw_fd()
+    }
+}
+
 /// Interface to a loop device ie `/dev/loop0`.
 #[derive(Debug)]
 pub struct LoopDevice {
@@ -95,6 +107,12 @@ pub struct LoopDevice {
 impl AsRawFd for LoopDevice {
     fn as_raw_fd(&self) -> RawFd {
         self.device.as_raw_fd()
+    }
+}
+
+impl IntoRawFd for LoopDevice {
+    fn into_raw_fd(self) -> RawFd {
+        self.device.into_raw_fd()
     }
 }
 
