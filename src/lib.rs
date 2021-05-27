@@ -19,8 +19,8 @@
 extern crate libc;
 
 use bindings::{
-    loop_info64, LOOP_CLR_FD, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY, LOOP_SET_DIRECT_IO,
-    LOOP_SET_FD, LOOP_SET_STATUS64,
+    loop_info64, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY, LOOP_SET_DIRECT_IO, LOOP_SET_FD,
+    LOOP_SET_STATUS64,
 };
 use libc::{c_int, ioctl};
 use std::fs::{File, Metadata, OpenOptions};
@@ -37,6 +37,11 @@ use std::{
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
+
+#[cfg(not(target_os = "android"))]
+type IoctlRequest = libc::c_ulong;
+#[cfg(target_os = "android")]
+type IoctlRequest = libc::c_int;
 
 const LOOP_CONTROL: &str = "/dev/loop-control";
 #[cfg(not(target_os = "android"))]
@@ -73,7 +78,10 @@ impl LoopControl {
     /// ```
     pub fn next_free(&self) -> io::Result<LoopDevice> {
         let dev_num = ioctl_to_error(unsafe {
-            ioctl(self.dev_file.as_raw_fd() as c_int, LOOP_CTL_GET_FREE.into())
+            ioctl(
+                self.dev_file.as_raw_fd() as c_int,
+                LOOP_CTL_GET_FREE as IoctlRequest,
+            )
         })?;
         LoopDevice::open(&format!("{}{}", LOOP_PREFIX, dev_num))
     }
@@ -223,7 +231,7 @@ impl LoopDevice {
         ioctl_to_error(unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
-                LOOP_SET_FD.into(),
+                LOOP_SET_FD as IoctlRequest,
                 bf.as_raw_fd() as c_int,
             )
         })?;
@@ -231,7 +239,7 @@ impl LoopDevice {
         let result = unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
-                LOOP_SET_STATUS64.into(),
+                LOOP_SET_STATUS64 as IoctlRequest,
                 &info,
             )
         };
@@ -278,7 +286,13 @@ impl LoopDevice {
     /// ld.detach().unwrap();
     /// ```
     pub fn detach(&self) -> io::Result<()> {
-        ioctl_to_error(unsafe { ioctl(self.device.as_raw_fd() as c_int, LOOP_CLR_FD.into(), 0) })?;
+        ioctl_to_error(unsafe {
+            ioctl(
+                self.device.as_raw_fd() as c_int,
+                bindings::LOOP_CLR_FD as IoctlRequest,
+                0,
+            )
+        })?;
         Ok(())
     }
 
@@ -288,7 +302,7 @@ impl LoopDevice {
         ioctl_to_error(unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
-                LOOP_SET_CAPACITY.into(),
+                LOOP_SET_CAPACITY as IoctlRequest,
                 0,
             )
         })?;
@@ -300,7 +314,7 @@ impl LoopDevice {
         ioctl_to_error(unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
-                LOOP_SET_DIRECT_IO.into(),
+                LOOP_SET_DIRECT_IO as IoctlRequest,
                 if direct_io { 1 } else { 0 },
             )
         })?;
