@@ -41,7 +41,10 @@ const LOOP_SET_CAPACITY: u16 = 0x4C07;
 const LOOP_CTL_GET_FREE: u16 = 0x4C82;
 
 const LOOP_CONTROL: &str = "/dev/loop-control";
+#[cfg(not(target_os = "android"))]
 const LOOP_PREFIX: &str = "/dev/loop";
+#[cfg(target_os = "android")]
+const LOOP_PREFIX: &str = "/dev/block/loop";
 
 /// Interface to the loop control device: `/dev/loop-control`.
 #[derive(Debug)]
