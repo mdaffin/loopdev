@@ -7,7 +7,6 @@ extern crate serde;
 extern crate serde_json;
 
 use loopdev::{LoopControl, LoopDevice};
-use std::path::PathBuf;
 
 mod util;
 use util::{attach_file, create_backing_file, detach_all, list_device, setup};
@@ -17,15 +16,8 @@ fn get_next_free_device() {
     let _lock = setup();
 
     let lc = LoopControl::open().expect("should be able to open the LoopControl device");
-    let ld0 = lc
-        .next_free()
+    lc.next_free()
         .expect("should not error finding the next free loopback device");
-
-    assert_eq!(
-        ld0.path(),
-        Some(PathBuf::from("/dev/loop0")),
-        "should find the first loopback device"
-    );
 }
 
 #[test]
@@ -148,17 +140,14 @@ fn detach_a_backing_file_with_sizelimit_overflow() {
 fn detach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
     let _lock = setup();
 
+    let pre_num_devices = list_device(None).len();
+
     {
         let file = create_backing_file(file_size);
-        attach_file(
-            "/dev/loop0",
-            file.to_path_buf().to_str().unwrap(),
-            offset,
-            sizelimit,
-        );
+        let ld = attach_file(file.to_path_buf().to_str().unwrap(), offset, sizelimit);
 
-        let ld0 = LoopDevice::open("/dev/loop0")
-            .expect("should be able to open the created loopback device");
+        let ld0 =
+            LoopDevice::open(&ld).expect("should be able to open the created loopback device");
 
         ld0.detach()
             .expect("should not error detaching the backing file from the loopdev");
@@ -171,8 +160,8 @@ fn detach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
 
     assert_eq!(
         devices.len(),
-        0,
-        "there should be no loopback devices mounted"
+        pre_num_devices,
+        "there should be no additional loopback devices mounted"
     );
     detach_all();
 }

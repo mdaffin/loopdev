@@ -1,8 +1,10 @@
 use libc::fallocate;
+use loopdev::LoopControl;
 use serde::{Deserialize, Deserializer};
 use std::{
     io,
-    os::unix::io::AsRawFd,
+    os::unix::{io::AsRawFd, prelude::MetadataExt},
+    path::PathBuf,
     process::Command,
     sync::{Arc, Mutex, MutexGuard},
 };
@@ -32,22 +34,22 @@ pub fn setup() -> MutexGuard<'static, ()> {
     lock
 }
 
-pub fn attach_file(loop_dev: &str, backing_file: &str, offset: u64, sizelimit: u64) {
-    if !Command::new("losetup")
-        .args(&[
-            loop_dev,
-            backing_file,
-            "--offset",
-            &offset.to_string(),
-            "--sizelimit",
-            &sizelimit.to_string(),
-        ])
-        .status()
-        .expect("failed to attach backing file to loop device")
-        .success()
-    {
-        panic!("failed to cleanup existing loop devices")
-    }
+/// Attach `backing_file` and return path to loop device
+pub fn attach_file(backing_file: &str, offset: u64, sizelimit: u64) -> PathBuf {
+    let lc = LoopControl::open().expect("should be able to open the LoopControl device");
+    let mut ld = lc
+        .next_free()
+        .expect("should not error finding the next free loopback device");
+    ld.with()
+        .offset(offset)
+        .size_limit(sizelimit)
+        .attach(&backing_file)
+        .expect("should not error attaching the backing file to the loopdev");
+    let meta = ld.metadata().expect("should not error accessing metadata");
+    let rdev = meta.rdev();
+    let minor = ((rdev >> 12) & 0xFFFF_FF00) | (rdev & 0xFF);
+
+    PathBuf::from(format!("/dev/loop{}", minor))
 }
 
 pub fn detach_all() {
@@ -69,9 +71,7 @@ pub fn list_device(dev_file: Option<&str>) -> Vec<LoopDeviceOutput> {
     if let Some(dev_file) = dev_file {
         output.arg(dev_file);
     }
-    let output = output
-        .output()
-        .expect("failed to cleanup existing loop devices");
+    let output = output.output().expect("failed to list loop devices");
 
     if output.stdout.is_empty() {
         Vec::new()
