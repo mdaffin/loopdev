@@ -19,6 +19,7 @@
 extern crate libc;
 
 use std::fs::File;
+use std::fs::Metadata;
 use std::fs::OpenOptions;
 
 use libc::{c_int, ioctl};
@@ -250,6 +251,11 @@ impl LoopDevice {
         let mut p = PathBuf::from("/proc/self/fd");
         p.push(self.device.as_raw_fd().to_string());
         std::fs::read_link(&p).ok()
+    }
+
+    /// Get the device metadata
+    pub fn metadata(&self) -> io::Result<Metadata> {
+        self.device.metadata()
     }
 
     /// Detach a loop device from its backing file.
