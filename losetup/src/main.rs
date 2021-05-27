@@ -2,9 +2,9 @@
 extern crate clap;
 extern crate loopdev;
 
+use loopdev::{LoopControl, LoopDevice};
 use std::io::{self, Write};
 use std::process::exit;
-use loopdev::{LoopControl, LoopDevice};
 
 fn find() -> io::Result<()> {
     let loopdev = LoopControl::open()?.next_free()?;
@@ -13,16 +13,25 @@ fn find() -> io::Result<()> {
 }
 
 fn attach(matches: &clap::ArgMatches) -> io::Result<()> {
-    let quite = matches.is_present("quite");
+    let quiet = matches.is_present("quiet");
     let image = matches.value_of("image").unwrap();
     let offset = value_t!(matches.value_of("offset"), u64).unwrap_or(0);
-    let sizelimit = value_t!(matches.value_of("sizelimit"), u64).unwrap_or(0);
-    let loopdev = match matches.value_of("loopdev") {
+    let size_limit = value_t!(matches.value_of("sizelimit"), u64).unwrap_or(0);
+    let read_only = matches.is_present("read-only");
+    let autoclear = matches.is_present("autoclear");
+    let mut loopdev = match matches.value_of("loopdev") {
         Some(loopdev) => LoopDevice::open(&loopdev)?,
         None => LoopControl::open().and_then(|lc| lc.next_free())?,
     };
-    loopdev.attach_with_sizelimit(&image, offset, sizelimit)?;
-    if !quite {
+    loopdev
+        .with()
+        .offset(offset)
+        .size_limit(size_limit)
+        .read_only(read_only)
+        .autoclear(autoclear)
+        .attach(image)?;
+
+    if !quiet {
         println!("{}", loopdev.path().unwrap().display());
     }
     Ok(())
@@ -60,7 +69,9 @@ fn main() {
             (@arg loopdev: "the loop device to attach")
             (@arg offset: -o --offset +takes_value "the offset within the file to start at")
             (@arg sizelimit: -s --sizelimit +takes_value "the file is limited to this size")
-            (@arg quite: -q --quite "don't print the device name")
+            (@arg read_only: -r --read-only "set up a read-only loop device")
+            (@arg autoclear: -a --autoclear "set the autoclear flag")
+            (@arg quiet: -q --quiet "don't print the device name")
         )
         (@subcommand detach =>
             (about: "detach the loop device from the backing file")
@@ -75,7 +86,8 @@ fn main() {
             (@arg free: -f --free "find free devices")
             (@arg used: -u --used "find used devices")
         )
-    ).get_matches();
+    )
+    .get_matches();
 
     let result = match matches.subcommand() {
         ("find", _) => find(),
