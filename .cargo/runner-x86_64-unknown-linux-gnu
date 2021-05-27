@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+binary_name=`basename $1`
+
+sudo -E --preserve-env=PATH $@
