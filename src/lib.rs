@@ -22,9 +22,9 @@ use bindings::{
     loop_info64, LOOP_CLR_FD, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY, LOOP_SET_FD, LOOP_SET_STATUS64,
 };
 use libc::{c_int, ioctl};
-use std::fs::{File, OpenOptions};
 use std::{
     default::Default,
+    fs::{File, Metadata, OpenOptions},
     io,
     os::unix::prelude::*,
     path::{Path, PathBuf},
@@ -261,6 +261,11 @@ impl LoopDevice {
         let mut p = PathBuf::from("/proc/self/fd");
         p.push(self.device.as_raw_fd().to_string());
         std::fs::read_link(&p).ok()
+    }
+
+    /// Get the device metadata
+    pub fn metadata(&self) -> io::Result<Metadata> {
+        self.device.metadata()
     }
 
     /// Detach a loop device from its backing file.
