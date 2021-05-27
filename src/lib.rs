@@ -34,12 +34,15 @@ const LOOP_CLR_FD: u16 = 0x4C01;
 const LOOP_SET_STATUS64: u16 = 0x4C04;
 //const LOOP_GET_STATUS64: u16 = 0x4C05;
 const LOOP_SET_CAPACITY: u16 = 0x4C07;
-//const LOOP_SET_DIRECT_IO: u16 = 0x4C08;
+const LOOP_SET_DIRECT_IO: u16 = 0x4C08;
 //const LOOP_SET_BLOCK_SIZE: u16 = 0x4C09;
 
 //const LOOP_CTL_ADD: u16 = 0x4C80;
 //const LOOP_CTL_REMOVE: u16 = 0x4C81;
 const LOOP_CTL_GET_FREE: u16 = 0x4C82;
+
+const LOOP_FLAG_READ_ONLY: u32 = 0x01;
+const LOOP_FLAG_AUTOCLEAR: u32 = 0x04;
 
 const LOOP_CONTROL: &str = "/dev/loop-control";
 #[cfg(not(target_os = "android"))]
@@ -131,6 +134,7 @@ impl LoopDevice {
         AttachOptions {
             device: self,
             info: Default::default(),
+            direct_io: false,
         }
     }
 
@@ -216,7 +220,11 @@ impl LoopDevice {
             .read(true)
             .write(true)
             .open(backing_file)?;
+        self.attach_fd_with_loop_info(bf.as_raw_fd(), info)
+    }
 
+    /// Attach the loop device to a fd with loop_info.
+    fn attach_fd_with_loop_info(&self, bf: impl AsRawFd, info: LoopInfo64) -> io::Result<()> {
         // Attach the file
         ioctl_to_error(unsafe {
             ioctl(
@@ -226,18 +234,21 @@ impl LoopDevice {
             )
         })?;
 
-        if let Err(err) = ioctl_to_error(unsafe {
+        let result = unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
                 LOOP_SET_STATUS64.into(),
                 &info,
             )
-        }) {
-            // Ignore the error to preserve the original error
-            let _ = self.detach();
-            return Err(err);
+        };
+        match ioctl_to_error(result) {
+            Err(err) => {
+                // Ignore the error to preserve the original error
+                let _ = self.detach();
+                Err(err)
+            }
+            Ok(_) => Ok(()),
         }
-        Ok(())
     }
 
     /// Get the path of the loop device.
@@ -289,6 +300,18 @@ impl LoopDevice {
         })?;
         Ok(())
     }
+
+    // Enable or disable direct I/O for the backing file.
+    pub fn set_direct_io(&self, direct_io: bool) -> io::Result<()> {
+        ioctl_to_error(unsafe {
+            ioctl(
+                self.device.as_raw_fd() as c_int,
+                LOOP_SET_DIRECT_IO.into(),
+                if direct_io { 1 } else { 0 },
+            )
+        })?;
+        Ok(())
+    }
 }
 
 /// Used to set options when attaching a device. Created with [LoopDevice::with()].
@@ -322,6 +345,7 @@ impl LoopDevice {
 pub struct AttachOptions<'d> {
     device: &'d mut LoopDevice,
     info: LoopInfo64,
+    direct_io: bool,
 }
 
 impl AttachOptions<'_> {
@@ -334,6 +358,32 @@ impl AttachOptions<'_> {
     /// Maximum size of the data in bytes.
     pub fn size_limit(mut self, size_limit: u64) -> Self {
         self.info.lo_sizelimit = size_limit;
+        self
+    }
+
+    /// Set read only flag
+    pub fn read_only(mut self, read_only: bool) -> Self {
+        if read_only {
+            self.info.lo_flags |= LOOP_FLAG_READ_ONLY;
+        } else {
+            self.info.lo_flags &= !LOOP_FLAG_READ_ONLY;
+        }
+        self
+    }
+
+    /// Set autoclear flag
+    pub fn autoclear(mut self, read_only: bool) -> Self {
+        if read_only {
+            self.info.lo_flags |= LOOP_FLAG_AUTOCLEAR;
+        } else {
+            self.info.lo_flags &= !LOOP_FLAG_AUTOCLEAR;
+        }
+        self
+    }
+
+    // Enable or disable direct I/O for the backing file.
+    pub fn set_direct_io(mut self, direct_io: bool) -> Self {
+        self.direct_io = direct_io;
         self
     }
 
@@ -350,7 +400,21 @@ impl AttachOptions<'_> {
 
     /// Attach the loop device to a file with the set options.
     pub fn attach(self, backing_file: impl AsRef<Path>) -> io::Result<()> {
-        self.device.attach_with_loop_info(backing_file, self.info)
+        self.device.attach_with_loop_info(backing_file, self.info)?;
+        if self.direct_io {
+            self.device.set_direct_io(self.direct_io)?;
+        }
+        Ok(())
+    }
+
+    /// Attach the loop device to an fd
+    pub fn attach_fd(self, backing_file_fd: impl AsRawFd) -> io::Result<()> {
+        self.device
+            .attach_fd_with_loop_info(backing_file_fd, self.info)?;
+        if self.direct_io {
+            self.device.set_direct_io(self.direct_io)?;
+        }
+        Ok(())
     }
 }
 
