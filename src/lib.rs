@@ -37,6 +37,11 @@ mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
+#[cfg(not(target_os = "android"))]
+type IoctlRequest = libc::c_ulong;
+#[cfg(target_os = "android")]
+type IoctlRequest = libc::c_int;
+
 const LOOP_CONTROL: &str = "/dev/loop-control";
 const LOOP_PREFIX: &str = "/dev/loop";
 
@@ -69,7 +74,10 @@ impl LoopControl {
     /// ```
     pub fn next_free(&self) -> io::Result<LoopDevice> {
         let dev_num = ioctl_to_error(unsafe {
-            ioctl(self.dev_file.as_raw_fd() as c_int, LOOP_CTL_GET_FREE.into())
+            ioctl(
+                self.dev_file.as_raw_fd() as c_int,
+                LOOP_CTL_GET_FREE as IoctlRequest,
+            )
         })?;
         LoopDevice::open(&format!("{}{}", LOOP_PREFIX, dev_num))
     }
@@ -202,7 +210,7 @@ impl LoopDevice {
         ioctl_to_error(unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
-                LOOP_SET_FD.into(),
+                LOOP_SET_FD as IoctlRequest,
                 bf.as_raw_fd() as c_int,
             )
         })?;
@@ -210,7 +218,7 @@ impl LoopDevice {
         if let Err(err) = ioctl_to_error(unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
-                LOOP_SET_STATUS64.into(),
+                LOOP_SET_STATUS64 as IoctlRequest,
                 &info,
             )
         }) {
@@ -249,7 +257,13 @@ impl LoopDevice {
     /// ld.detach().unwrap();
     /// ```
     pub fn detach(&self) -> io::Result<()> {
-        ioctl_to_error(unsafe { ioctl(self.device.as_raw_fd() as c_int, LOOP_CLR_FD.into(), 0) })?;
+        ioctl_to_error(unsafe {
+            ioctl(
+                self.device.as_raw_fd() as c_int,
+                LOOP_CLR_FD as IoctlRequest,
+                0,
+            )
+        })?;
         Ok(())
     }
 
@@ -259,7 +273,7 @@ impl LoopDevice {
         ioctl_to_error(unsafe {
             ioctl(
                 self.device.as_raw_fd() as c_int,
-                LOOP_SET_CAPACITY.into(),
+                LOOP_SET_CAPACITY as IoctlRequest,
                 0,
             )
         })?;
