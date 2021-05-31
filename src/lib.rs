@@ -24,7 +24,7 @@ use bindings::{
 use libc::{c_int, ioctl};
 use std::{
     default::Default,
-    fs::{File, Metadata, OpenOptions},
+    fs::{File, OpenOptions},
     io,
     os::unix::prelude::*,
     path::{Path, PathBuf},
@@ -263,9 +263,18 @@ impl LoopDevice {
         std::fs::read_link(&p).ok()
     }
 
-    /// Get the device metadata
-    pub fn metadata(&self) -> io::Result<Metadata> {
-        self.device.metadata()
+    /// Get the device major number
+    pub fn major(&self) -> io::Result<u32> {
+        self.device
+            .metadata()
+            .map(|m| unsafe { libc::major(m.rdev()) as u32 })
+    }
+
+    /// Get the device major number
+    pub fn minor(&self) -> io::Result<u32> {
+        self.device
+            .metadata()
+            .map(|m| unsafe { libc::minor(m.rdev()) as u32 })
     }
 
     /// Detach a loop device from its backing file.
