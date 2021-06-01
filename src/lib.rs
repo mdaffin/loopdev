@@ -156,7 +156,7 @@ impl LoopDevice {
     /// ld.with().part_scan(true).attach("disk.img").unwrap();
     /// # ld.detach().unwrap();
     /// ```
-    pub fn with(&mut self) -> AttachOptions<'_> {
+    pub fn with(&self) -> AttachOptions<'_> {
         AttachOptions {
             device: self,
             info: Default::default(),
@@ -379,12 +379,12 @@ impl LoopDevice {
 /// ld.with()
 ///     .offset(1024*1024)
 ///     .size_limit(1024*1024*1024)
-///     .attach("test.img")
+///     .attach("disk.img")
 ///     .unwrap();
 /// # ld.detach().unwrap();
 /// ```
 pub struct AttachOptions<'d> {
-    device: &'d mut LoopDevice,
+    device: &'d LoopDevice,
     info: loop_info64,
     direct_io: bool,
 }
