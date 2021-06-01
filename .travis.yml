@@ -20,7 +20,7 @@ matrix:
     - rust: nightly
 
 before_script:
-  - fallocate -l 128M test.img
+  - fallocate -l 128M disk.img
   - '[[ "$TRAVIS_RUST_VERSION" != "stable" ]] || rustup component add clippy-preview'
 
 env:
