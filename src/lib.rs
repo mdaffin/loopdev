@@ -4,6 +4,8 @@
 //!
 //! # Examples
 //!
+//! Default options:
+//!
 //! ```rust
 //! use loopdev::LoopControl;
 //! let lc = LoopControl::open().unwrap();
@@ -11,7 +13,23 @@
 //!
 //! println!("{}", ld.path().unwrap().display());
 //!
-//! ld.attach_file("test.img").unwrap();
+//! ld.attach_file("disk.img").unwrap();
+//! // ...
+//! ld.detach().unwrap();
+//! ```
+//!
+//! Custom options:
+//!
+//! ```rust
+//! # use loopdev::LoopControl;
+//! # let lc = LoopControl::open().unwrap();
+//! # let ld = lc.next_free().unwrap();
+//! #
+//! ld.with()
+//!     .part_scan(true)
+//!     .offset(512 * 1024 * 1024) // 512 MiB
+//!     .size_limit(1024 * 1024 * 1024) // 1GiB
+//!     .attach("disk.img").unwrap();
 //! // ...
 //! ld.detach().unwrap();
 //! ```
@@ -135,7 +153,7 @@ impl LoopDevice {
     /// ```rust
     /// use loopdev::LoopDevice;
     /// let mut ld = LoopDevice::open("/dev/loop3").unwrap();
-    /// ld.with().part_scan(true).attach("test.img").unwrap();
+    /// ld.with().part_scan(true).attach("disk.img").unwrap();
     /// # ld.detach().unwrap();
     /// ```
     pub fn with(&mut self) -> AttachOptions<'_> {
@@ -169,7 +187,7 @@ impl LoopDevice {
     /// ```rust
     /// use loopdev::LoopDevice;
     /// let ld = LoopDevice::open("/dev/loop4").unwrap();
-    /// ld.attach_file("test.img").unwrap();
+    /// ld.attach_file("disk.img").unwrap();
     /// # ld.detach().unwrap();
     /// ```
     pub fn attach_file<P: AsRef<Path>>(&self, backing_file: P) -> io::Result<()> {
@@ -297,7 +315,7 @@ impl LoopDevice {
     /// ```rust
     /// use loopdev::LoopDevice;
     /// let ld = LoopDevice::open("/dev/loop5").unwrap();
-    /// # ld.attach_file("test.img").unwrap();
+    /// # ld.attach_file("disk.img").unwrap();
     /// ld.detach().unwrap();
     /// ```
     pub fn detach(&self) -> io::Result<()> {
@@ -348,7 +366,7 @@ impl LoopDevice {
 /// let mut ld = LoopDevice::open("/dev/loop6").unwrap();
 /// ld.with()
 ///     .part_scan(true)
-///     .attach("test.img")
+///     .attach("disk.img")
 ///     .unwrap();
 /// # ld.detach().unwrap();
 /// ```

@@ -18,7 +18,7 @@ let ld = lc.next_free().unwrap();
 
 println!("{}", ld.path().unwrap().display());
 
-ld.attach_file("test.img").unwrap();
+ld.attach_file("disk.img").unwrap();
 // ...
 ld.detach().unwrap();
 ```
