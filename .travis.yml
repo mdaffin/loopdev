@@ -26,13 +26,13 @@ before_script:
 env:
   global:
     - TRAVIS_CARGO_NIGHTLY_FEATURE=""
-    - secure: pyi9BUvrSCekPRCo5hhbD2nPqgbj7UJun82TxxEBA9fGNR37LipjPL3/Rv70RCYwOurPzGDcjWyWOAAAkl4iKI3Zdr+JyAcNhpqY+qoPzx179ZoCF/zGxl8NqGtSL5OTXCo4L+HxzD6LxjPXOY2Qv7OmnalkJpLPzvew87lpO75t/b5fnJwT73NGMI0phf3rFEJ5oWAG6oHJTyTNdqrx5zTt3ekDR0Ra+fjnVs4WBuoSeCHSzpyvhwMjGmrh1YPxjEmOdetCzgJO4huWQXv56QMv41u3WT6aY4DamM0bVTaWR+spyWZ1KrCbTpqezP9Ds0ApiyKRQID7mT1KOwAOu4L6lKQJZfMbhlPhDwniDGQDjMMVEMPvheRFQIMieFJYSSFCr9CH2EMpDUmye288mWmZUfcoac4MvwOVFYAfkEEW7oQaB172tKI3RzM5MQUOLHdYKN4BFLT7SOWIRUPiJcMhbcZbfV+qVgpWSDCE6hguWXy9om4Du48mEM/2KI9nGxCJIKKcESLduTHslEW0pTs1DOuivj6o/iqmAoERGs4+IKdtvK8wBwOAMLjf23picoz1IGziazxHppDkm96dcdnw3qKzERmNEd/rrD4He4tyS66W5p6BEw2mFAlyvUBVn8G76ku2FXbmLBy1NlMJC5TCI+bLzwjnCjTOUklep/8=
+    - secure: "yxpJSNW4ASzz983BpHFHE3uoS+4eyB1YIZjZjtL+1/VLESMp5ZEx5nfYdcbg/yA45nsldERZaLEtyhhgbnSOofdzPsZjxrmF2B+ePheTg4GEvH4HGg1Gz8Phmkjd4PRt4w8ji0Qk6h0NruUMMImUBYLRAAB6z2iKQCaCftKhBtQDXtJ6XUe7xom4McooLsBYuJgY//Fjn/BbvClwn3RfpSWttEQJ6j8gQlMLxtLNxtQ8cf/NShkGmRyl4U0QqURBZqvR2LstnqVkYEVifJoWfnIn9qCKYTouj4tRxy3IUwOPFZ9/SvcN639zP8V4qy1vJ146GyfEDpN4mtFP23U6gBbnwVGaaPeGyVVCYYbPfFWbgSs0GUt2JCUTAJaHuIXCrUb8Tlcj3a5smd7ffwdoSK29arTkHF2j94GmTdDZLeGmLtOPz9GGHLnafmNyd8C2UW4psxapskEXaixAYg81R907dW4ZitDxKygnsBHHYzJoHP94cCqR+n6rad9z/YW0ZtMWgEenEkr4qht/jEMRz23a1kLEfmphCAPNzYI3jXFYaBq/sZHeoe/d5cSWxOyeUti9cLtlnpDOEi0S+M9Fczz/iH9EU3a0pQt1KGuOIzExcIV3WmpBErEaF+Xj0Vw7BfFt7yJAk0EAv1nCM8untqoFnmQQCYeiOP+XbhjHzjo="
 
 script:
   - '[[ "$TRAVIS_RUST_VERSION" != "stable" ]] || cargo clippy -- -D warnings'
   - cargo build --verbose
   - sudo -E  env "PATH=$PATH" cargo test --verbose
-  - sudo -E env "PATH=$PATH" rm -rf target
+  - sudo -E env "PATH=$PATH" rm -rf target ~/.cargo
 
 deploy:
   - provider: script
