@@ -13,7 +13,6 @@ keywords = ["loop", "losetup"]
 travis-ci = { repository = "serde-rs/serde" }
 
 [features]
-default = ["direct_io"]
 direct_io = []
 
 [dependencies]
