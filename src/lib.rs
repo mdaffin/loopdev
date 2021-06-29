@@ -36,9 +36,11 @@
 
 extern crate libc;
 
+#[cfg(feature = "direct_io")]
+use bindings::LOOP_SET_DIRECT_IO;
 use bindings::{
-    loop_info64, LOOP_CLR_FD, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY, LOOP_SET_DIRECT_IO,
-    LOOP_SET_FD, LOOP_SET_STATUS64, LO_FLAGS_AUTOCLEAR, LO_FLAGS_READ_ONLY,
+    loop_info64, LOOP_CLR_FD, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY, LOOP_SET_FD, LOOP_SET_STATUS64,
+    LO_FLAGS_AUTOCLEAR, LO_FLAGS_READ_ONLY,
 };
 use libc::{c_int, ioctl};
 use std::{
@@ -160,6 +162,7 @@ impl LoopDevice {
         AttachOptions {
             device: self,
             info: Default::default(),
+            #[cfg(feature = "direct_io")]
             direct_io: false,
         }
     }
@@ -343,6 +346,7 @@ impl LoopDevice {
     }
 
     // Enable or disable direct I/O for the backing file.
+    #[cfg(feature = "direct_io")]
     pub fn set_direct_io(&self, direct_io: bool) -> io::Result<()> {
         ioctl_to_error(unsafe {
             ioctl(
@@ -386,6 +390,7 @@ impl LoopDevice {
 pub struct AttachOptions<'d> {
     device: &'d LoopDevice,
     info: loop_info64,
+    #[cfg(feature = "direct_io")]
     direct_io: bool,
 }
 
@@ -423,6 +428,7 @@ impl AttachOptions<'_> {
     }
 
     // Enable or disable direct I/O for the backing file.
+    #[cfg(feature = "direct_io")]
     pub fn set_direct_io(mut self, direct_io: bool) -> Self {
         self.direct_io = direct_io;
         self
@@ -442,6 +448,7 @@ impl AttachOptions<'_> {
     /// Attach the loop device to a file with the set options.
     pub fn attach(self, backing_file: impl AsRef<Path>) -> io::Result<()> {
         self.device.attach_with_loop_info(backing_file, self.info)?;
+        #[cfg(feature = "direct_io")]
         if self.direct_io {
             self.device.set_direct_io(self.direct_io)?;
         }
@@ -452,6 +459,7 @@ impl AttachOptions<'_> {
     pub fn attach_fd(self, backing_file_fd: impl AsRawFd) -> io::Result<()> {
         self.device
             .attach_fd_with_loop_info(backing_file_fd, self.info)?;
+        #[cfg(feature = "direct_io")]
         if self.direct_io {
             self.device.set_direct_io(self.direct_io)?;
         }

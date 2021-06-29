@@ -12,6 +12,9 @@ keywords = ["loop", "losetup"]
 [badges]
 travis-ci = { repository = "serde-rs/serde" }
 
+[features]
+direct_io = []
+
 [dependencies]
 errno = "0.2"
 libc = "0.2"
