@@ -167,20 +167,6 @@ impl LoopDevice {
         }
     }
 
-    /// Attach the loop device to a file starting at offset into the file.
-    #[deprecated(
-        since = "0.2.0",
-        note = "use `loop.with().offset(offset).attach(file)` instead"
-    )]
-    pub fn attach<P: AsRef<Path>>(&self, backing_file: P, offset: u64) -> io::Result<()> {
-        let info = loop_info64 {
-            lo_offset: offset,
-            ..Default::default()
-        };
-
-        Self::attach_with_loop_info(self, backing_file, info)
-    }
-
     /// Attach the loop device to a file that maps to the whole file.
     ///
     /// # Examples
@@ -195,44 +181,6 @@ impl LoopDevice {
     /// ```
     pub fn attach_file<P: AsRef<Path>>(&self, backing_file: P) -> io::Result<()> {
         let info = loop_info64 {
-            ..Default::default()
-        };
-
-        Self::attach_with_loop_info(self, backing_file, info)
-    }
-
-    /// Attach the loop device to a file starting at offset into the file.
-    #[deprecated(
-        since = "0.2.2",
-        note = "use `loop.with().offset(offset).attach(file)` instead"
-    )]
-    pub fn attach_with_offset<P: AsRef<Path>>(
-        &self,
-        backing_file: P,
-        offset: u64,
-    ) -> io::Result<()> {
-        let info = loop_info64 {
-            lo_offset: offset,
-            ..Default::default()
-        };
-
-        Self::attach_with_loop_info(self, backing_file, info)
-    }
-
-    /// Attach the loop device to a file starting at offset into the file and a the given sizelimit.
-    #[deprecated(
-        since = "0.2.2",
-        note = "use `with().size_limit(size).attach(file)` instead"
-    )]
-    pub fn attach_with_sizelimit<P: AsRef<Path>>(
-        &self,
-        backing_file: P,
-        offset: u64,
-        size_limit: u64,
-    ) -> io::Result<()> {
-        let info = loop_info64 {
-            lo_offset: offset,
-            lo_sizelimit: size_limit,
             ..Default::default()
         };
 
@@ -278,12 +226,6 @@ impl LoopDevice {
             }
             Ok(_) => Ok(()),
         }
-    }
-
-    /// Get the path of the loop device.
-    #[deprecated(since = "0.2.0", note = "use `path` instead")]
-    pub fn get_path(&self) -> Option<PathBuf> {
-        self.path()
     }
 
     /// Get the path of the loop device.
