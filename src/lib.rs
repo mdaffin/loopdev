@@ -58,9 +58,9 @@ mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
-#[cfg(not(target_os = "android"))]
+#[cfg(all(not(target_os = "android"), not(target_env = "musl")))]
 type IoctlRequest = libc::c_ulong;
-#[cfg(target_os = "android")]
+#[cfg(any(target_os = "android", target_env = "musl"))]
 type IoctlRequest = libc::c_int;
 
 const LOOP_CONTROL: &str = "/dev/loop-control";
