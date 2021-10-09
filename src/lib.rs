@@ -193,9 +193,10 @@ impl LoopDevice {
         backing_file: impl AsRef<Path>,
         info: loop_info64,
     ) -> io::Result<()> {
+        let write_access = (info.lo_flags & LO_FLAGS_READ_ONLY) == 0;
         let bf = OpenOptions::new()
             .read(true)
-            .write(true)
+            .write(write_access)
             .open(backing_file)?;
         self.attach_fd_with_loop_info(bf, info)
     }
