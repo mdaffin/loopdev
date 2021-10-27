@@ -1,7 +1,7 @@
 [package]
 name = "loopdev"
 description = "Setup and control loop devices"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Michael Daffin <michael@daffin.io>"]
 license = "MIT"
 documentation = "https://docs.rs/loopdev"
