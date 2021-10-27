@@ -30,8 +30,8 @@ env:
 
 script:
   - '[[ "$TRAVIS_RUST_VERSION" != "stable" ]] || cargo clippy -- -D warnings'
-  - cargo build --verbose
-  - sudo -E  env "PATH=$PATH" cargo test --jobs 1 --verbose
+  - cargo build
+  - sudo -E  env "PATH=$PATH" cargo test --jobs 1
 
 deploy:
   - provider: script
