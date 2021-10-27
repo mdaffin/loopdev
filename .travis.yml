@@ -11,9 +11,9 @@ rust:
   - nightly
   - beta
   - stable
-  - 1.45.0
-  - 1.44.0
-  - 1.43.0
+  - 1.52.0
+  - 1.51.0
+  - 1.50.0
 
 matrix:
   allow_failures:
@@ -30,8 +30,8 @@ env:
 
 script:
   - '[[ "$TRAVIS_RUST_VERSION" != "stable" ]] || cargo clippy -- -D warnings'
-  - cargo build --verbose
-  - sudo -E  env "PATH=$PATH" cargo test --verbose
+  - cargo build
+  - sudo -E  env "PATH=$PATH" cargo test --jobs 1
 
 deploy:
   - provider: script

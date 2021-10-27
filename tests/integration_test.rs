@@ -14,6 +14,7 @@ use util::{attach_file, create_backing_file, detach_all, list_device, setup};
 
 #[test]
 fn get_next_free_device() {
+    let num_devices_at_start = list_device(None).len();
     let _lock = setup();
 
     let lc = LoopControl::open().expect("should be able to open the LoopControl device");
@@ -23,7 +24,10 @@ fn get_next_free_device() {
 
     assert_eq!(
         ld0.path(),
-        Some(PathBuf::from("/dev/loop0")),
+        Some(PathBuf::from(&format!(
+            "/dev/loop{}",
+            num_devices_at_start
+        ))),
         "should find the first loopback device"
     );
 }
@@ -68,7 +72,7 @@ fn attach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
 
         let file = create_backing_file(file_size);
         let file_path = file.to_path_buf();
-        let mut ld0 = lc
+        let ld0 = lc
             .next_free()
             .expect("should not error finding the next free loopback device");
 
@@ -146,18 +150,19 @@ fn detach_a_backing_file_with_sizelimit_overflow() {
 }
 
 fn detach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
+    let num_devices_at_start = list_device(None).len();
     let _lock = setup();
 
     {
         let file = create_backing_file(file_size);
         attach_file(
-            "/dev/loop0",
+            "/dev/loop3",
             file.to_path_buf().to_str().unwrap(),
             offset,
             sizelimit,
         );
 
-        let ld0 = LoopDevice::open("/dev/loop0")
+        let ld0 = LoopDevice::open("/dev/loop3")
             .expect("should be able to open the created loopback device");
 
         ld0.detach()
@@ -167,11 +172,10 @@ fn detach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
     };
 
     std::thread::sleep(std::time::Duration::from_millis(100));
-    let devices = list_device(None);
 
     assert_eq!(
-        devices.len(),
-        0,
+        list_device(None).len(),
+        num_devices_at_start,
         "there should be no loopback devices mounted"
     );
     detach_all();
