@@ -23,10 +23,7 @@ fn get_next_free_device() {
 
     assert_eq!(
         ld0.path(),
-        Some(PathBuf::from(&format!(
-            "/dev/loop{}",
-            num_devices_at_start
-        ))),
+        Some(PathBuf::from(&format!("/dev/loop{}", num_devices_at_start))),
         "should find the first loopback device"
     );
 }
