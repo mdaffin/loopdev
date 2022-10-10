@@ -23,10 +23,7 @@ fn get_next_free_device() {
 
     assert_eq!(
         ld0.path(),
-        Some(PathBuf::from(&format!(
-            "/dev/loop{}",
-            num_devices_at_start
-        ))),
+        Some(PathBuf::from(&format!("/dev/loop{}", num_devices_at_start))),
         "should find the first loopback device"
     );
 }
@@ -63,7 +60,7 @@ fn attach_a_backing_file_with_sizelimit_overflow() {
     attach_a_backing_file(0, 128 * 1024 * 1024 * 2, 128 * 1024 * 1024);
 }
 
-fn attach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
+fn attach_a_backing_file(offset: u64, sizelimit: u64, file_size: i32) {
     let _lock = setup();
 
     let (devices, ld0_path, file_path) = {
@@ -148,7 +145,7 @@ fn detach_a_backing_file_with_sizelimit_overflow() {
     detach_a_backing_file(0, 128 * 1024 * 1024 * 2, 128 * 1024 * 1024);
 }
 
-fn detach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
+fn detach_a_backing_file(offset: u64, sizelimit: u64, file_size: i32) {
     let num_devices_at_start = list_device(None).len();
     let _lock = setup();
 

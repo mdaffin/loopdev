@@ -1,6 +1,7 @@
 use libc::fallocate;
 use serde::{Deserialize, Deserializer};
 use std::{
+    convert::TryInto,
     io,
     os::unix::io::AsRawFd,
     process::Command,
@@ -15,9 +16,9 @@ lazy_static! {
     static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
-pub fn create_backing_file(size: i64) -> TempPath {
+pub fn create_backing_file(size: i32) -> TempPath {
     let file = NamedTempFile::new().expect("should be able to create a temp file");
-    if unsafe { fallocate(file.as_raw_fd(), 0, 0, size) } < 0 {
+    if unsafe { fallocate(file.as_raw_fd(), 0, 0, size.try_into().unwrap()) } < 0 {
         panic!(
             "should be able to allocate the tenp file: {}",
             io::Error::last_os_error()
