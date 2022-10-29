@@ -9,7 +9,7 @@ use loopdev::{LoopControl, LoopDevice};
 use std::path::PathBuf;
 
 mod util;
-use util::{attach_file, create_backing_file, detach_all, list_device, setup};
+use crate::util::{attach_file, create_backing_file, detach_all, list_device, setup};
 
 #[test]
 fn get_next_free_device() {
