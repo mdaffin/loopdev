@@ -42,7 +42,7 @@ extern crate libc;
 
 #[cfg(feature = "direct_io")]
 use bindings::LOOP_SET_DIRECT_IO;
-use bindings::{
+use crate::bindings::{
     loop_info64, LOOP_CLR_FD, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY, LOOP_SET_FD, LOOP_SET_STATUS64,
     LO_FLAGS_AUTOCLEAR, LO_FLAGS_READ_ONLY,
 };
