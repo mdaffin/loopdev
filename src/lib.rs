@@ -44,7 +44,7 @@ extern crate libc;
 use bindings::LOOP_SET_DIRECT_IO;
 use crate::bindings::{
     loop_info64, LOOP_CLR_FD, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY, LOOP_SET_FD, LOOP_SET_STATUS64,
-    LO_FLAGS_AUTOCLEAR, LO_FLAGS_READ_ONLY,
+    LO_FLAGS_AUTOCLEAR, LO_FLAGS_PARTSCAN, LO_FLAGS_READ_ONLY,
 };
 use libc::{c_int, ioctl};
 use std::{
@@ -385,9 +385,9 @@ impl AttachOptions<'_> {
     /// partition table parsing depends on sector sizes. The default is sector size is 512 bytes
     pub fn part_scan(mut self, enable: bool) -> Self {
         if enable {
-            self.info.lo_flags |= 1 << 4;
+            self.info.lo_flags |= LO_FLAGS_PARTSCAN;
         } else {
-            self.info.lo_flags &= u32::max_value() - (1 << 4);
+            self.info.lo_flags &= !LO_FLAGS_PARTSCAN;
         }
         self
     }
