@@ -1,10 +1,3 @@
-extern crate libc;
-extern crate loopdev;
-extern crate tempfile;
-#[macro_use]
-extern crate lazy_static;
-extern crate serde;
-
 use loopdev::{LoopControl, LoopDevice};
 use std::path::PathBuf;
 

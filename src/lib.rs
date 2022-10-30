@@ -81,6 +81,13 @@ pub struct LoopControl {
 
 impl LoopControl {
     /// Opens the loop control device.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error for various reasons when opening
+    /// the loop control file `/dev/loop-control`. See
+    /// [`OpenOptions::open`](https://doc.rust-lang.org/std/fs/struct.OpenOptions.html)
+    /// for further details.
     pub fn open() -> io::Result<Self> {
         Ok(Self {
             dev_file: OpenOptions::new()
@@ -100,6 +107,13 @@ impl LoopControl {
     /// let ld = lc.next_free().unwrap();
     /// println!("{}", ld.path().unwrap().display());
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error for various reasons when opening
+    /// the loop device file `/dev/loopX`. See
+    /// [`OpenOptions::open`](https://doc.rust-lang.org/std/fs/struct.OpenOptions.html)
+    /// for further details.
     pub fn next_free(&self) -> io::Result<LoopDevice> {
         let dev_num = ioctl_to_error(unsafe {
             ioctl(
@@ -143,6 +157,13 @@ impl IntoRawFd for LoopDevice {
 
 impl LoopDevice {
     /// Opens a loop device.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error for various reasons when opening
+    /// the given loop device file. See
+    /// [`OpenOptions::open`](https://doc.rust-lang.org/std/fs/struct.OpenOptions.html)
+    /// for further details.
     pub fn open<P: AsRef<Path>>(dev: P) -> io::Result<Self> {
         // TODO create dev if it does not exist and begins with LOOP_PREFIX
         Ok(Self {
@@ -165,7 +186,7 @@ impl LoopDevice {
     pub fn with(&self) -> AttachOptions<'_> {
         AttachOptions {
             device: self,
-            info: Default::default(),
+            info: bindings::loop_info64::default(),
             #[cfg(feature = "direct_io")]
             direct_io: false,
         }
@@ -183,6 +204,14 @@ impl LoopDevice {
     /// ld.attach_file("disk.img").unwrap();
     /// # ld.detach().unwrap();
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error for various reasons. Either when
+    /// opening the backing file (see
+    /// [`OpenOptions::open`](https://doc.rust-lang.org/std/fs/struct.OpenOptions.html)
+    /// for further details) or when calling the ioctl to attach the backing
+    /// file to the device.
     pub fn attach_file<P: AsRef<Path>>(&self, backing_file: P) -> io::Result<()> {
         let info = loop_info64 {
             ..Default::default()
@@ -191,7 +220,7 @@ impl LoopDevice {
         Self::attach_with_loop_info(self, backing_file, info)
     }
 
-    /// Attach the loop device to a file with loop_info64.
+    /// Attach the loop device to a file with `loop_info64`.
     fn attach_with_loop_info(
         &self, // TODO should be mut? - but changing it is a breaking change
         backing_file: impl AsRef<Path>,
@@ -205,7 +234,7 @@ impl LoopDevice {
         self.attach_fd_with_loop_info(bf, info)
     }
 
-    /// Attach the loop device to a fd with loop_info.
+    /// Attach the loop device to a fd with `loop_info`.
     fn attach_fd_with_loop_info(&self, bf: impl AsRawFd, info: loop_info64) -> io::Result<()> {
         // Attach the file
         ioctl_to_error(unsafe {
@@ -226,7 +255,7 @@ impl LoopDevice {
         match ioctl_to_error(result) {
             Err(err) => {
                 // Ignore the error to preserve the original error
-                let _ = self.detach();
+                let _detach_err = self.detach();
                 Err(err)
             }
             Ok(_) => Ok(()),
@@ -241,6 +270,11 @@ impl LoopDevice {
     }
 
     /// Get the device major number
+    ///
+    /// # Errors
+    ///
+    /// This function needs to stat the backing file and can fail if there is
+    /// an IO error.
     pub fn major(&self) -> io::Result<u32> {
         self.device
             .metadata()
@@ -248,6 +282,11 @@ impl LoopDevice {
     }
 
     /// Get the device major number
+    ///
+    /// # Errors
+    ///
+    /// This function needs to stat the backing file and can fail if there is
+    /// an IO error.
     pub fn minor(&self) -> io::Result<u32> {
         self.device
             .metadata()
@@ -257,7 +296,7 @@ impl LoopDevice {
     /// Detach a loop device from its backing file.
     ///
     /// Note that the device won't fully detach until a short delay after the underling device file
-    /// gets closed. This happens when LoopDev goes out of scope so you should ensure the LoopDev
+    /// gets closed. This happens when `LoopDev` goes out of scope so you should ensure the `LoopDev`
     /// lives for a short a time as possible.
     ///
     /// # Examples
@@ -268,6 +307,11 @@ impl LoopDevice {
     /// # ld.attach_file("disk.img").unwrap();
     /// ld.detach().unwrap();
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error for various reasons when calling the
+    /// ioctl to detach the backing file from the device.
     pub fn detach(&self) -> io::Result<()> {
         ioctl_to_error(unsafe {
             ioctl(
@@ -281,6 +325,11 @@ impl LoopDevice {
 
     /// Resize a live loop device. If the size of the backing file changes this can be called to
     /// inform the loop driver about the new size.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error for various reasons when calling the
+    /// ioctl to set the capacity of the device.
     pub fn set_capacity(&self) -> io::Result<()> {
         ioctl_to_error(unsafe {
             ioctl(
@@ -292,7 +341,12 @@ impl LoopDevice {
         Ok(())
     }
 
-    // Enable or disable direct I/O for the backing file.
+    /// Enable or disable direct I/O for the backing file.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error for various reasons when calling the
+    /// ioctl to set the direct io flag for the device.
     #[cfg(feature = "direct_io")]
     pub fn set_direct_io(&self, direct_io: bool) -> io::Result<()> {
         ioctl_to_error(unsafe {
@@ -306,7 +360,7 @@ impl LoopDevice {
     }
 }
 
-/// Used to set options when attaching a device. Created with [LoopDevice::with()].
+/// Used to set options when attaching a device. Created with [`LoopDevice::with`()].
 ///
 /// # Examples
 ///
@@ -334,6 +388,7 @@ impl LoopDevice {
 ///     .unwrap();
 /// # ld.detach().unwrap();
 /// ```
+#[must_use]
 pub struct AttachOptions<'d> {
     device: &'d LoopDevice,
     info: loop_info64,
@@ -393,6 +448,14 @@ impl AttachOptions<'_> {
     }
 
     /// Attach the loop device to a file with the set options.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error for various reasons. Either when
+    /// opening the backing file (see
+    /// [`OpenOptions::open`](https://doc.rust-lang.org/std/fs/struct.OpenOptions.html)
+    /// for further details) or when calling the ioctl to attach the backing
+    /// file to the device.
     pub fn attach(self, backing_file: impl AsRef<Path>) -> io::Result<()> {
         self.device.attach_with_loop_info(backing_file, self.info)?;
         #[cfg(feature = "direct_io")]
@@ -403,6 +466,11 @@ impl AttachOptions<'_> {
     }
 
     /// Attach the loop device to an fd
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error for various reasons when calling the
+    /// ioctl to attach the backing file to the device.
     pub fn attach_fd(self, backing_file_fd: impl AsRawFd) -> io::Result<()> {
         self.device
             .attach_fd_with_loop_info(backing_file_fd, self.info)?;
