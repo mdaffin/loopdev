@@ -7,8 +7,10 @@ use std::io::{self, Write};
 use std::process::exit;
 
 fn find() -> io::Result<()> {
-    let loopdev = LoopControl::open()?.next_free()?;
-    println!("{}", loopdev.path().unwrap().display());
+    println!(
+        "{}",
+        LoopControl::open()?.next_free()?.path().unwrap().display()
+    );
     Ok(())
 }
 
@@ -17,9 +19,10 @@ fn attach(matches: &clap::ArgMatches) -> io::Result<()> {
     let image = matches.value_of("image").unwrap();
     let offset = value_t!(matches.value_of("offset"), u64).unwrap_or(0);
     let size_limit = value_t!(matches.value_of("sizelimit"), u64).unwrap_or(0);
-    let read_only = matches.is_present("read-only");
-    let autoclear = matches.is_present("autoclear");
-    let mut loopdev = match matches.value_of("loopdev") {
+    let read_only = matches.is_present("read_only");
+    let auto_clear = matches.is_present("auto_clear");
+    let part_scan = matches.is_present("part_scan");
+    let loopdev = match matches.value_of("loopdev") {
         Some(loopdev) => LoopDevice::open(&loopdev)?,
         None => LoopControl::open().and_then(|lc| lc.next_free())?,
     };
@@ -28,7 +31,8 @@ fn attach(matches: &clap::ArgMatches) -> io::Result<()> {
         .offset(offset)
         .size_limit(size_limit)
         .read_only(read_only)
-        .autoclear(autoclear)
+        .autoclear(auto_clear)
+        .part_scan(part_scan)
         .attach(image)?;
 
     if !quiet {
@@ -69,8 +73,9 @@ fn main() {
             (@arg loopdev: "the loop device to attach")
             (@arg offset: -o --offset +takes_value "the offset within the file to start at")
             (@arg sizelimit: -s --sizelimit +takes_value "the file is limited to this size")
-            (@arg read_only: -r --read-only "set up a read-only loop device")
-            (@arg autoclear: -a --autoclear "set the autoclear flag")
+            (@arg read_only: -r --readonly "set up a read-only loop device")
+            (@arg auto_clear: -a --autoclear "set the autoclear flag")
+            (@arg part_scan: -p --partscan "set the part-scan flag")
             (@arg quiet: -q --quiet "don't print the device name")
         )
         (@subcommand detach =>
