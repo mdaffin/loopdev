@@ -5,7 +5,7 @@ version = "0.2.0"
 description = "Setup and control loopback devices"
 
 [dependencies]
-clap = "2.23.3"
+clap = "2.34.0"
 
 [dependencies.loopdev]
 optional = false
