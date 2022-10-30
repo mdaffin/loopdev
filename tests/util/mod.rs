@@ -12,18 +12,14 @@ use tempfile::{NamedTempFile, TempPath};
 
 // All tests use the same loopback device interface and so can tread on each others toes leading to
 // racy tests. So we need to lock all tests to ensure only one runs at a time.
-lazy_static! {
+lazy_static::lazy_static! {
     static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
 pub fn create_backing_file(size: i32) -> TempPath {
     let file = NamedTempFile::new().expect("should be able to create a temp file");
-    if unsafe { fallocate(file.as_raw_fd(), 0, 0, size.try_into().unwrap()) } < 0 {
-        panic!(
-            "should be able to allocate the tenp file: {}",
-            io::Error::last_os_error()
-        );
-    }
+    assert!(!(unsafe { fallocate(file.as_raw_fd(), 0, 0, size.try_into().unwrap()) } < 0), "should be able to allocate the tenp file: {}",
+            io::Error::last_os_error());
     file.into_temp_path()
 }
 
