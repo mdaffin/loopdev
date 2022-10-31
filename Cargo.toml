@@ -28,3 +28,5 @@ tempfile = "3.2.0"
 lazy_static = "1.4.0"
 serde_json = "1.0.68"
 serde = { version = "1.0.130", features = ["derive"] }
+gpt = "3.0.0"
+glob = "0.3.0"

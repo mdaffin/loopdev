@@ -1,9 +1,10 @@
 use libc::fallocate;
 use serde::{Deserialize, Deserializer};
 use std::{
-    convert::TryInto,
+    fs::OpenOptions,
     io,
     os::unix::io::AsRawFd,
+    path::Path,
     process::Command,
     sync::{Arc, Mutex, MutexGuard},
 };
@@ -16,11 +17,42 @@ lazy_static::lazy_static! {
     static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
-pub fn create_backing_file(size: i32) -> TempPath {
+pub fn create_backing_file(size: i64) -> TempPath {
     let file = NamedTempFile::new().expect("should be able to create a temp file");
-    assert!(!(unsafe { fallocate(file.as_raw_fd(), 0, 0, size.try_into().unwrap()) } < 0), "should be able to allocate the tenp file: {}",
-            io::Error::last_os_error());
+    assert!(
+        !(unsafe { fallocate(file.as_raw_fd(), 0, 0, size) } < 0),
+        "should be able to allocate the temp file: {}",
+        io::Error::last_os_error()
+    );
     file.into_temp_path()
+}
+
+pub fn partition_backing_file(backing_file: impl AsRef<Path>, size: u64) {
+    gpt::mbr::ProtectiveMBR::new()
+        .overwrite_lba0(&mut OpenOptions::new().write(true).open(&backing_file).unwrap())
+        .expect("failed to write MBR");
+
+    let mut disk = gpt::GptConfig::new()
+        .initialized(false)
+        .writable(true)
+        .logical_block_size(gpt::disk::LogicalBlockSize::Lb512)
+        .open(backing_file)
+        .expect("could not open backing file");
+
+    disk.update_partitions(std::collections::BTreeMap::<u32, gpt::partition::Partition>::new())
+        .expect("coult not initialize blank partition table");
+
+    disk.add_partition(
+        "Linux filesystem",
+        size,
+        gpt::partition_types::LINUX_FS,
+        0,
+        None,
+    )
+    .expect("could not create partition");
+
+    disk.write()
+        .expect("could not write partition table to backing file");
 }
 
 pub fn setup() -> MutexGuard<'static, ()> {
