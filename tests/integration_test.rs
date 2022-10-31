@@ -2,7 +2,9 @@ use loopdev::{LoopControl, LoopDevice};
 use std::path::PathBuf;
 
 mod util;
-use crate::util::{attach_file, create_backing_file, detach_all, list_device, setup};
+use crate::util::{
+    attach_file, create_backing_file, detach_all, list_device, partition_backing_file, setup,
+};
 
 #[test]
 fn get_next_free_device() {
@@ -53,7 +55,7 @@ fn attach_a_backing_file_with_sizelimit_overflow() {
     attach_a_backing_file(0, 128 * 1024 * 1024 * 2, 128 * 1024 * 1024);
 }
 
-fn attach_a_backing_file(offset: u64, sizelimit: u64, file_size: i32) {
+fn attach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
     let _lock = setup();
 
     let (devices, ld0_path, file_path) = {
@@ -138,20 +140,20 @@ fn detach_a_backing_file_with_sizelimit_overflow() {
     detach_a_backing_file(0, 128 * 1024 * 1024 * 2, 128 * 1024 * 1024);
 }
 
-fn detach_a_backing_file(offset: u64, sizelimit: u64, file_size: i32) {
+fn detach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
     let num_devices_at_start = list_device(None).len();
     let _lock = setup();
 
     {
         let file = create_backing_file(file_size);
         attach_file(
-            "/dev/loop3",
+            "/dev/loop5",
             file.to_path_buf().to_str().unwrap(),
             offset,
             sizelimit,
         );
 
-        let ld0 = LoopDevice::open("/dev/loop3")
+        let ld0 = LoopDevice::open("/dev/loop5")
             .expect("should be able to open the created loopback device");
 
         ld0.detach()
@@ -168,4 +170,44 @@ fn detach_a_backing_file(offset: u64, sizelimit: u64, file_size: i32) {
         "there should be no loopback devices mounted"
     );
     detach_all();
+}
+
+#[test]
+fn attach_a_backing_file_with_part_scan_default() {
+    attach_a_backing_file_with_part_scan(1 * 1024 * 1024);
+}
+
+fn attach_a_backing_file_with_part_scan(file_size: i64) {
+    let _lock = setup();
+
+    let partitions = {
+        let lc = LoopControl::open().expect("should be able to open the LoopControl device");
+
+        let file = create_backing_file(file_size);
+        partition_backing_file(&file, 1024);
+
+        let ld0 = lc
+            .next_free()
+            .expect("should not error finding the next free loopback device");
+
+        ld0.with()
+            .part_scan(true)
+            .attach(&file)
+            .expect("should not error attaching the backing file to the loopdev");
+        let devices = list_device(Some(ld0.path().unwrap().to_str().unwrap()));
+        let partitions = glob::glob(&format!("{}p*", devices[0].name))
+            .unwrap()
+            .map(|entry| entry.unwrap().display().to_string())
+            .collect::<Vec<_>>();
+
+        file.close().expect("should delete the temp backing file");
+
+        partitions
+    };
+
+    assert_eq!(
+        partitions.len(),
+        1,
+        "there should be only one partition for the device"
+    );
 }

@@ -37,9 +37,6 @@
 //! // ...
 //! ld.detach().unwrap();
 //! ```
-
-extern crate libc;
-
 use crate::bindings::{
     loop_info64, LOOP_CLR_FD, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY, LOOP_SET_FD, LOOP_SET_STATUS64,
     LO_FLAGS_AUTOCLEAR, LO_FLAGS_PARTSCAN, LO_FLAGS_READ_ONLY,
@@ -179,7 +176,7 @@ impl LoopDevice {
     ///
     /// ```rust
     /// use loopdev::LoopDevice;
-    /// let mut ld = LoopDevice::open("/dev/loop3").unwrap();
+    /// let mut ld = LoopDevice::open("/dev/loop5").unwrap();
     /// ld.with().part_scan(true).attach("disk.img").unwrap();
     /// # ld.detach().unwrap();
     /// ```
@@ -200,7 +197,7 @@ impl LoopDevice {
     ///
     /// ```rust
     /// use loopdev::LoopDevice;
-    /// let ld = LoopDevice::open("/dev/loop4").unwrap();
+    /// let ld = LoopDevice::open("/dev/loop6").unwrap();
     /// ld.attach_file("disk.img").unwrap();
     /// # ld.detach().unwrap();
     /// ```
@@ -303,7 +300,7 @@ impl LoopDevice {
     ///
     /// ```rust
     /// use loopdev::LoopDevice;
-    /// let ld = LoopDevice::open("/dev/loop5").unwrap();
+    /// let ld = LoopDevice::open("/dev/loop7").unwrap();
     /// # ld.attach_file("disk.img").unwrap();
     /// ld.detach().unwrap();
     /// ```
@@ -380,7 +377,7 @@ impl LoopDevice {
 ///
 /// ```rust
 /// use loopdev::LoopDevice;
-/// let mut ld = LoopDevice::open("/dev/loop7").unwrap();
+/// let mut ld = LoopDevice::open("/dev/loop5").unwrap();
 /// ld.with()
 ///     .offset(1024*1024)
 ///     .size_limit(1024*1024*1024)
@@ -420,8 +417,8 @@ impl AttachOptions<'_> {
     }
 
     /// Set autoclear flag
-    pub fn autoclear(mut self, read_only: bool) -> Self {
-        if read_only {
+    pub fn autoclear(mut self, autoclear: bool) -> Self {
+        if autoclear {
             self.info.lo_flags |= LO_FLAGS_AUTOCLEAR;
         } else {
             self.info.lo_flags &= !LO_FLAGS_AUTOCLEAR;
