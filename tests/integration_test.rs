@@ -211,3 +211,22 @@ fn attach_a_backing_file_with_part_scan(file_size: i64) {
         "there should be only one partition for the device"
     );
 }
+
+#[test]
+fn add_a_loop_device() {
+    let _lock = setup();
+    let dev = std::fs::read_dir("/dev").expect("should be able to open /dev");
+    let device_count = dev
+        .filter(|r| {
+            r.as_ref()
+                .expect("readdir failed")
+                .file_name()
+                .to_string_lossy()
+                .contains("loop")
+        })
+        .count();
+
+    let lc = LoopControl::open().expect("should be able to open the LoopControl device");
+    assert!(lc.add(device_count as u32).is_err()); // EEXIST
+    assert!(lc.add(device_count as u32 + 1).is_ok())
+}
