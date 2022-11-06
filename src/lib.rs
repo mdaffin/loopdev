@@ -38,8 +38,8 @@
 //! ld.detach().unwrap();
 //! ```
 use crate::bindings::{
-    loop_info64, LOOP_CLR_FD, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY, LOOP_SET_FD, LOOP_SET_STATUS64,
-    LO_FLAGS_AUTOCLEAR, LO_FLAGS_PARTSCAN, LO_FLAGS_READ_ONLY,
+    loop_config, loop_info64, LOOP_CLR_FD, LOOP_CONFIGURE, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY,
+    LOOP_SET_FD, LOOP_SET_STATUS64, LO_FLAGS_AUTOCLEAR, LO_FLAGS_PARTSCAN, LO_FLAGS_READ_ONLY,
 };
 #[cfg(feature = "direct_io")]
 use bindings::LOOP_SET_DIRECT_IO;
@@ -50,6 +50,8 @@ use std::{
     io,
     os::unix::prelude::*,
     path::{Path, PathBuf},
+    thread::sleep,
+    time::Duration,
 };
 
 #[allow(non_camel_case_types)]
@@ -231,8 +233,47 @@ impl LoopDevice {
         self.attach_fd_with_loop_info(bf, info)
     }
 
-    /// Attach the loop device to a fd with `loop_info`.
+    /// Attach the loop device to a fd with `loop_info64`.
     fn attach_fd_with_loop_info(&self, bf: impl AsRawFd, info: loop_info64) -> io::Result<()> {
+        let cfg = loop_config {
+            fd: bf.as_raw_fd().try_into().unwrap(),
+            info,
+            ..Default::default()
+        };
+
+        // First attempt the `LOOP_CONFIGURE` ioctl, which makes the operation
+        // atomic because the device is created with a single ioctl.
+        let mut retries = 0;
+        loop {
+            let result = unsafe {
+                ioctl(
+                    self.device.as_raw_fd() as c_int,
+                    LOOP_CONFIGURE as IoctlRequest,
+                    &cfg,
+                )
+            };
+
+            match ioctl_to_error(result) {
+                Err(err) => match err.raw_os_error() {
+                    // According to the `losetup` source code, these conditions
+                    // trigger the fallback logic.
+                    Some(libc::EINVAL) | Some(libc::ENOTTY) | Some(libc::ENOSYS) => break,
+                    Some(libc::EAGAIN) => {
+                        // Use the same max retries and sleep duration from the
+                        // `losetup` source.
+                        if retries >= 10 {
+                            return Err(err);
+                        }
+                        retries += 1;
+                        sleep(Duration::from_micros(25000));
+                        continue;
+                    }
+                    _ => return Err(err),
+                },
+                Ok(_) => return Ok(()),
+            };
+        }
+
         // Attach the file
         ioctl_to_error(unsafe {
             ioctl(
