@@ -1,0 +1,5 @@
+[build]
+pre-build = [
+    # Bindgen dependencies
+    "apt-get update && apt-get install --assume-yes --no-install-recommends libclang-dev",
+]

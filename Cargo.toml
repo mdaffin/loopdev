@@ -11,7 +11,7 @@ keywords = ["loop", "losetup"]
 edition = "2021"
 
 [badges]
-travis-ci = { repository = "serde-rs/serde" }
+build = { status = "https://github.com/mdaffin/loopdev/actions/workflows/ci.yml/badge.svg" }
 
 [features]
 direct_io = []
@@ -24,9 +24,9 @@ libc = "0.2.105"
 bindgen = { version = "0.63.0", default-features = false, features = ["runtime"] }
 
 [dev-dependencies]
-tempfile = "3.2.0"
-lazy_static = "1.4.0"
-serde_json = "1.0.68"
-serde = { version = "1.0.130", features = ["derive"] }
-gpt = "3.0.0"
 glob = "0.3.0"
+gpt = "3.0.0"
+lazy_static = "1.4.0"
+serde = { version = "1.0.130", features = ["derive"] }
+serde_json = "1.0.68"
+tempfile = "3.2.0"
