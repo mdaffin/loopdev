@@ -11,7 +11,7 @@ Provides rust interface with similar functionality to the Linux utility `losetup
 
 ## Examples
 
-```rust
+```no_run
 use loopdev::LoopControl;
 let lc = LoopControl::open().unwrap();
 let ld = lc.next_free().unwrap();

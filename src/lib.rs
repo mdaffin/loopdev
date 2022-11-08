@@ -10,7 +10,7 @@
 //!
 //! Default options:
 //!
-//! ```rust
+//! ```no_run
 //! use loopdev::LoopControl;
 //! let lc = LoopControl::open().unwrap();
 //! let ld = lc.next_free().unwrap();
@@ -24,7 +24,7 @@
 //!
 //! Custom options:
 //!
-//! ```rust
+//! ```no_run
 //! # use loopdev::LoopControl;
 //! # let lc = LoopControl::open().unwrap();
 //! # let ld = lc.next_free().unwrap();
@@ -98,7 +98,7 @@ impl LoopControl {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```no_run
     /// use loopdev::LoopControl;
     /// let lc = LoopControl::open().unwrap();
     /// let ld = lc.next_free().unwrap();
@@ -174,7 +174,7 @@ impl LoopDevice {
     ///
     /// Attach the device to a file.
     ///
-    /// ```rust
+    /// ```no_run
     /// use loopdev::LoopDevice;
     /// let mut ld = LoopDevice::open("/dev/loop5").unwrap();
     /// ld.with().part_scan(true).attach("disk.img").unwrap();
@@ -195,7 +195,7 @@ impl LoopDevice {
     ///
     /// Attach the device to a file.
     ///
-    /// ```rust
+    /// ```no_run
     /// use loopdev::LoopDevice;
     /// let ld = LoopDevice::open("/dev/loop6").unwrap();
     /// ld.attach_file("disk.img").unwrap();
@@ -298,7 +298,7 @@ impl LoopDevice {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```no_run
     /// use loopdev::LoopDevice;
     /// let ld = LoopDevice::open("/dev/loop7").unwrap();
     /// # ld.attach_file("disk.img").unwrap();
@@ -363,7 +363,7 @@ impl LoopDevice {
 ///
 /// Enable partition scanning on attach:
 ///
-/// ```rust
+/// ```no_run
 /// use loopdev::LoopDevice;
 /// let mut ld = LoopDevice::open("/dev/loop6").unwrap();
 /// ld.with()
@@ -375,7 +375,7 @@ impl LoopDevice {
 ///
 /// A 1MiB slice of the file located at 1KiB into the file.
 ///
-/// ```rust
+/// ```no_run
 /// use loopdev::LoopDevice;
 /// let mut ld = LoopDevice::open("/dev/loop5").unwrap();
 /// ld.with()
