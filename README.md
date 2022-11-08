@@ -25,12 +25,23 @@ ld.detach().unwrap();
 
 ## Development
 
-### Running The Tests Locally
+### Running tests
 
 Unfortunately the tests require root only syscalls and thus must be run as root.
 There is little point in mocking out these syscalls as I want to test they
 actually function as expected and if they were to be mocked out then the tests
 would not really be testing anything useful.
+
+#### Run tests locally
+
+The tests affect the system of the host machine. A `cargo` runner executes the test
+super user permissions in order to allow access to the loopdev subsystem.
+
+```bash
+cargo test
+```
+
+#### Running the tests in a Vagrant VM
 
 A vagrant file is provided that can be used to create an environment to safely
 run these tests locally as root. With [Vagrant] and [VirtualBox] installed you
