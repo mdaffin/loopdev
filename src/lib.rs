@@ -38,8 +38,8 @@
 //! ld.detach().unwrap();
 //! ```
 use crate::bindings::{
-    loop_info64, LOOP_CLR_FD, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY, LOOP_SET_FD, LOOP_SET_STATUS64,
-    LO_FLAGS_AUTOCLEAR, LO_FLAGS_PARTSCAN, LO_FLAGS_READ_ONLY,
+    loop_info64, LOOP_CLR_FD, LOOP_CTL_ADD, LOOP_CTL_GET_FREE, LOOP_SET_CAPACITY, LOOP_SET_FD,
+    LOOP_SET_STATUS64, LO_FLAGS_AUTOCLEAR, LO_FLAGS_PARTSCAN, LO_FLAGS_READ_ONLY,
 };
 #[cfg(feature = "direct_io")]
 use bindings::LOOP_SET_DIRECT_IO;
@@ -116,6 +116,32 @@ impl LoopControl {
             ioctl(
                 self.dev_file.as_raw_fd() as c_int,
                 LOOP_CTL_GET_FREE as IoctlRequest,
+            )
+        })?;
+        LoopDevice::open(&format!("{}{}", LOOP_PREFIX, dev_num))
+    }
+
+    /// Add and opens a new loop device.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use loopdev::LoopControl;
+    /// let lc = LoopControl::open().unwrap();
+    /// let ld = lc.add(1).unwrap();
+    /// println!("{}", ld.path().unwrap().display());
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This funcitons will return an error when a loop device with the passed
+    /// number exists or opening the newly created device fails.
+    pub fn add(&self, n: u32) -> io::Result<LoopDevice> {
+        let dev_num = ioctl_to_error(unsafe {
+            ioctl(
+                self.dev_file.as_raw_fd() as c_int,
+                LOOP_CTL_ADD as IoctlRequest,
+                n as c_int,
             )
         })?;
         LoopDevice::open(&format!("{}{}", LOOP_PREFIX, dev_num))
