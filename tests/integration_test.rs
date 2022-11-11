@@ -217,13 +217,15 @@ fn add_a_loop_device() {
     let _lock = setup();
     let dev = std::fs::read_dir("/dev").expect("should be able to open /dev");
     let device_count = dev
-        .filter(|r| {
+        .map(|r| {
             r.as_ref()
                 .expect("readdir failed")
                 .file_name()
                 .to_string_lossy()
-                .contains("loop")
+                .to_string()
         })
+        .filter(|r| r != "loop-control")
+        .filter(|r| r.contains("loop"))
         .count();
 
     let lc = LoopControl::open().expect("should be able to open the LoopControl device");
