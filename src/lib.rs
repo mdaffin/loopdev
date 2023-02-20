@@ -118,7 +118,10 @@ impl LoopControl {
                 LOOP_CTL_GET_FREE as IoctlRequest,
             )
         })?;
-        LoopDevice::open(&format!("{}{}", LOOP_PREFIX, dev_num))
+        let dev = format!("{}{}", LOOP_PREFIX, dev_num);
+        #[cfg(target_os = "android")]
+        wait_for_device(&dev);
+        LoopDevice::open(&dev)
     }
 
     /// Add and opens a new loop device.
@@ -510,5 +513,21 @@ fn ioctl_to_error(ret: i32) -> io::Result<i32> {
         Err(io::Error::last_os_error())
     } else {
         Ok(ret)
+    }
+}
+
+// Android doesn't use devtmpfs. Instead device nodes under /dev are
+// created by userspace daemon ueventd. There could be a noticeable delay
+// between LOOP_CTL_GET_FREE issued and loop device created, so we need to
+// wait until it is created and then continue.
+fn wait_for_device<P: AsRef<Path>>(device: P) {
+    let start = std::time::Instant::now();
+    let timeout = std::time::Duration::from_secs(2);
+    let quantum = std::time::Duration::from_millis(1);
+    while !device.as_ref().exists() {
+        if start.elapsed() > timeout {
+            break;
+        }
+        std::thread::sleep(quantum);
     }
 }
