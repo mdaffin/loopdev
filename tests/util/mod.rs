@@ -20,7 +20,7 @@ lazy_static::lazy_static! {
 pub fn create_backing_file(size: i64) -> TempPath {
     let file = NamedTempFile::new().expect("should be able to create a temp file");
     assert!(
-        !(unsafe { fallocate(file.as_raw_fd(), 0, 0, size) } < 0),
+        unsafe { fallocate(file.as_raw_fd(), 0, 0, size) } >= 0,
         "should be able to allocate the temp file: {}",
         io::Error::last_os_error()
     );
@@ -63,7 +63,7 @@ pub fn setup() -> MutexGuard<'static, ()> {
 
 pub fn attach_file(loop_dev: &str, backing_file: &str, offset: u64, sizelimit: u64) {
     if !Command::new("losetup")
-        .args(&[
+        .args([
             loop_dev,
             backing_file,
             "--offset",
@@ -82,7 +82,7 @@ pub fn attach_file(loop_dev: &str, backing_file: &str, offset: u64, sizelimit: u
 pub fn detach_all() {
     std::thread::sleep(std::time::Duration::from_millis(10));
     if !Command::new("losetup")
-        .args(&["-D"])
+        .args(["-D"])
         .status()
         .expect("failed to cleanup existing loop devices")
         .success()
@@ -94,7 +94,7 @@ pub fn detach_all() {
 
 pub fn list_device(dev_file: Option<&str>) -> Vec<LoopDeviceOutput> {
     let mut output = Command::new("losetup");
-    output.args(&["-J", "-l"]);
+    output.args(["-J", "-l"]);
     if let Some(dev_file) = dev_file {
         output.arg(dev_file);
     }
