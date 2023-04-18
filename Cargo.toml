@@ -21,7 +21,7 @@ errno = "0.2.8"
 libc = "0.2.105"
 
 [build-dependencies]
-bindgen = { version = "0.60.1", default-features = false, features = ["runtime"] }
+bindgen = { version = "0.63.0", default-features = false, features = ["runtime"] }
 
 [dev-dependencies]
 tempfile = "3.2.0"
