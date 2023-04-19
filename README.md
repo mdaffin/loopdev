@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/mdaffin/loopdev.svg?branch=master)](https://app.travis-ci.com/github/mdaffin/loopdev)
+[![Build Status](https://github.com/mdaffin/loopdev/actions/workflows/ci.yml/badge.svg)](https://github.com/mdaffin/loopdev/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/loopdev.svg)](https://crates.io/crates/loopdev)
 
 # loopdev

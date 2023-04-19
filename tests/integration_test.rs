@@ -174,7 +174,7 @@ fn detach_a_backing_file(offset: u64, sizelimit: u64, file_size: i64) {
 
 #[test]
 fn attach_a_backing_file_with_part_scan_default() {
-    attach_a_backing_file_with_part_scan(1 * 1024 * 1024);
+    attach_a_backing_file_with_part_scan(1024 * 1024);
 }
 
 fn attach_a_backing_file_with_part_scan(file_size: i64) {

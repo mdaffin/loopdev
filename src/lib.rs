@@ -118,7 +118,7 @@ impl LoopControl {
                 LOOP_CTL_GET_FREE as IoctlRequest,
             )
         })?;
-        LoopDevice::open(&format!("{}{}", LOOP_PREFIX, dev_num))
+        LoopDevice::open(format!("{}{}", LOOP_PREFIX, dev_num))
     }
 
     /// Add and opens a new loop device.
@@ -144,7 +144,7 @@ impl LoopControl {
                 n as c_int,
             )
         })?;
-        LoopDevice::open(&format!("{}{}", LOOP_PREFIX, dev_num))
+        LoopDevice::open(format!("{}{}", LOOP_PREFIX, dev_num))
     }
 }
 
@@ -298,10 +298,12 @@ impl LoopDevice {
     ///
     /// This function needs to stat the backing file and can fail if there is
     /// an IO error.
+    #[allow(clippy::unnecessary_cast)]
     pub fn major(&self) -> io::Result<u32> {
         self.device
             .metadata()
-            .map(|m| unsafe { libc::major(m.rdev()) as u32 })
+            .map(|m| unsafe { libc::major(m.rdev()) })
+            .map(|m| m as u32)
     }
 
     /// Get the device major number
@@ -310,10 +312,12 @@ impl LoopDevice {
     ///
     /// This function needs to stat the backing file and can fail if there is
     /// an IO error.
+    #[allow(clippy::unnecessary_cast)]
     pub fn minor(&self) -> io::Result<u32> {
         self.device
             .metadata()
-            .map(|m| unsafe { libc::minor(m.rdev()) as u32 })
+            .map(|m| unsafe { libc::minor(m.rdev()) })
+            .map(|m| m as u32)
     }
 
     /// Detach a loop device from its backing file.
