@@ -215,20 +215,8 @@ fn attach_a_backing_file_with_part_scan(file_size: i64) {
 #[test]
 fn add_a_loop_device() {
     let _lock = setup();
-    let dev = std::fs::read_dir("/dev").expect("should be able to open /dev");
-    let device_count = dev
-        .map(|r| {
-            r.as_ref()
-                .expect("readdir failed")
-                .file_name()
-                .to_string_lossy()
-                .to_string()
-        })
-        .filter(|r| r != "loop-control")
-        .filter(|r| r.contains("loop"))
-        .count();
 
     let lc = LoopControl::open().expect("should be able to open the LoopControl device");
-    assert!(lc.add(device_count as u32).is_err()); // EEXIST
-    assert!(lc.add(device_count as u32 + 1).is_ok())
+    assert!(lc.add(1).is_ok());
+    assert!(lc.add(1).is_err());
 }
