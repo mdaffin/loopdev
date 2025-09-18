@@ -1,6 +1,7 @@
 use libc::fallocate;
 use serde::{Deserialize, Deserializer};
 use std::{
+    convert::TryInto,
     fs::OpenOptions,
     io,
     os::unix::io::AsRawFd,
@@ -20,7 +21,7 @@ lazy_static::lazy_static! {
 pub fn create_backing_file(size: i64) -> TempPath {
     let file = NamedTempFile::new().expect("should be able to create a temp file");
     assert!(
-        unsafe { fallocate(file.as_raw_fd(), 0, 0, size) } >= 0,
+        unsafe { fallocate(file.as_raw_fd(), 0, 0, size.try_into().unwrap()) } >= 0,
         "should be able to allocate the temp file: {}",
         io::Error::last_os_error()
     );
